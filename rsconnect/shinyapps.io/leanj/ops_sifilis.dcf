@@ -1,0 +1,12 @@
+name: ops_sifilis
+title: ops_sifilis
+username: leanj
+account: leanj
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16237899
+bundleId: 11325279
+url: https://leanj.shinyapps.io/ops_sifilis/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

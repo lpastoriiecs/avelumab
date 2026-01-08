@@ -1,0 +1,10 @@
+---
+title: "INTRODUCCION"
+output: html_document
+date: "2025-08-29"
+---
+## OPS2 - Rapid Diagnostic Tests para Silifis Congenita
+
+Visualizador ejemplo para el modelo de sífilis congénita.
+
+![Modelo](imagenes/esquemanew.png){.img-modelo}

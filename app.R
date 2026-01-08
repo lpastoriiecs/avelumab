@@ -1,0 +1,16 @@
+library(shiny)
+library(bslib)
+library(waiter)
+library(ggplot2)
+library(shinyWidgets)
+library(shinyFeedback)
+library(markdown)
+packageVersion("shinyWidgets")
+source("login.R")
+source("global.R")
+source("server_code.R")
+source("ui_code.R")
+source("db.R")
+
+
+shinyApp(server = server, ui = ui)

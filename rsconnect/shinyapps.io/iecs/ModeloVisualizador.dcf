@@ -1,0 +1,12 @@
+name: ModeloVisualizador
+title: ModeloVisualizador
+username: iecs
+account: iecs
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16068198
+bundleId: 11179615
+url: https://iecs.shinyapps.io/ModeloVisualizador/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
