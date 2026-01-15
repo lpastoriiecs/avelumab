@@ -36,44 +36,47 @@ cargar <- function() {
   data <- read_excel("lparametros.xlsx", sheet = "parametros")
   
   parametros_sectores <- list()
-
+  parametros_inflacion <- list()
+  parametros_tipo <- list()
+  parametros_decimales <- list()
   for (i in sectores) {
     datafiltrada <- data[toupper(data$Sector) %in% c(i, "GLOBAL"), ]
     PARAMETROS <- as.list(datafiltrada$Valor)
+    TIPO <- as.list(datafiltrada$Tipo)
+    INFLACION <- as.list(datafiltrada$Inflacion)
+    DECIMALES <- as.list(datafiltrada$Decimales)
     names(PARAMETROS) <- datafiltrada$Parametro
+    names(TIPO) <- datafiltrada$Parametro
+    names(INFLACION) <- datafiltrada$Parametro
+    names(DECIMALES) <- datafiltrada$Parametro
     
+    parametros_inflacion[[i]] <- INFLACION
+    parametros_tipo[[i]] <- TIPO
+    parametros_decimales[[i]] <- DECIMALES
     parametros_sectores[[i]] <- PARAMETROS
   }
-  return(parametros_sectores)
+  return(list(parametros = parametros_sectores, inflacion = parametros_inflacion, tipo = parametros_tipo, decimales = parametros_decimales))
 }
 cargarDatos <- function() {
   
   res <- cargar()
-  View(res)
-  clas <- read_excel("lparametros.xlsx", sheet = "clasificacion")
-  
-  parametros_tipo <- setNames(clas$Tipo, clas$Parametros)
-  parametros_decimales <- setNames(clas$Decimales, clas$Parametros)
-  parametros_inflacion <- setNames(clas$Inflacion, clas$Parametros)
+  clas <- read_excel("lparametros.xlsx", sheet = "parametros")
+  print(res$configuracion$tipo)
+  mutables_opciones <<- res$tipo
+  mutables_decimales <<- res$decimales
+  mutables_inflacion <<- res$inflacion
 
-  mutables_opciones <<- parametros_tipo
-  mutables_decimales <<- parametros_decimales
-  mutables_inflacion <<- parametros_inflacion
-  mutables <<- res
+  mutables <<- res$parametros
   print("Datos Cargados")
   
 }
-ajustarDatos <- function(parametros, tipoDato, inflacionModificador) {
+ajustarDatos <- function(parametros, inflacionModificador, parametroInflacion) {
   
   respuesta <- parametros  # inicializás copia
   
   for (param in names(parametros)) {
     print(param)
-    ajusto <- switch(tipoDato,
-                     inmutables_inflacion[[param]],
-                     mutables_inflacion[[param]],
-                     NULL
-    )
+    ajusto <- parametroInflacion[[param]]
     if (!is.null(ajusto) && ajusto == 1) {
       respuesta[[param]] <- parametros[[param]] * inflacionModificador
     }

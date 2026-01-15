@@ -58,7 +58,7 @@ rateTable <- function(numTech, hTemporal, techName, techId, sufijo, ancho) {
             value = NULL,
             class = "rtInput",
             align = "center",
-            currencySymbol = "%", currencySymbolPlacement = "s", decimalCharacter = ",", digitGroupSeparator = ".", minimumValue = 0, maximumValue = 100, decimalPlaces = mutables_decimales[[paste0(techId[i], j, sufijo)]]
+            currencySymbol = "%", currencySymbolPlacement = "s", decimalCharacter = ",", digitGroupSeparator = ".", minimumValue = 0, maximumValue = 100, decimalPlaces = selected_decimales[[paste0(techId[i], j, sufijo)]]
           ))
         })))
       )
@@ -72,10 +72,10 @@ numInput <- function(iId)
 {
   print(iId)
   return (
-    switch(mutables_opciones[[iId]],
-           autonumericInput(iId, label = NULL, value = 0, align = "center", currencySymbol = "$", currencySymbolPlacement = "p", decimalCharacter = ",", digitGroupSeparator = ".", decimalPlaces = mutables_decimales[[iId]]),
-           autonumericInput(iId, label = NULL, value = 0, align = "center", currencySymbol = "%", currencySymbolPlacement = "s", decimalCharacter = ",", digitGroupSeparator = ".", minimumValue = 0, maximumValue = 100, decimalPlaces = mutables_decimales[[iId]]),
-           autonumericInput(iId, label = NULL, value = 0, align = "center", decimalCharacter = ",", digitGroupSeparator = ".", decimalPlaces = mutables_decimales[[iId]]),
+    switch(selected_opciones[[iId]],
+           autonumericInput(iId, label = NULL, value = 0, align = "center", currencySymbol = "$", currencySymbolPlacement = "p", decimalCharacter = ",", digitGroupSeparator = ".", decimalPlaces = selected_decimales[[iId]]),
+           autonumericInput(iId, label = NULL, value = 0, align = "center", currencySymbol = "%", currencySymbolPlacement = "s", decimalCharacter = ",", digitGroupSeparator = ".", minimumValue = 0, maximumValue = 100, decimalPlaces = selected_decimales[[iId]]),
+           autonumericInput(iId, label = NULL, value = 0, align = "center", decimalCharacter = ",", digitGroupSeparator = ".", decimalPlaces = selected_decimales[[iId]]),
            )
   )
 }

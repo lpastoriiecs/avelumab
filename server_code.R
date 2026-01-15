@@ -1,7 +1,11 @@
 source("login.R")
 source("Avelumab.R")
-
+PERSPECTIVA_SELECTA <- "PAMI"
 cargarDatos()
+selected_opciones <<- mutables_opciones[[PERSPECTIVA_SELECTA]]
+print(selected_opciones)
+selected_inflacion <<- mutables_inflacion[[PERSPECTIVA_SELECTA]]
+selected_decimales <<- mutables_decimales[[PERSPECTIVA_SELECTA]]
 
 cargarEtiquetasTooltips()
 
@@ -21,6 +25,7 @@ server <- function(input, output, session) {
   
   
   informacionInflacion <- obtenerInflacion(FECHA_COSTOS)
+  
   if (!is.null(informacionInflacion)) {
     modificadorInflacion <- informacionInflacion[[1]]
     fechaInflacion <- informacionInflacion[[2]]
@@ -31,7 +36,7 @@ server <- function(input, output, session) {
   sMutables <- list()
   
   for (c in sectores) {
-    sMutables[[c]] <- ajustarDatos(mutables[[c]], 2, modificadorInflacion)
+    sMutables[[c]] <- ajustarDatos(mutables[[c]], modificadorInflacion, mutables_inflacion[[c]])
   }
 
   user_logged <- reactiveVal(TRUE)
@@ -187,7 +192,7 @@ server <- function(input, output, session) {
           flags_actualizando[[nombre_local]] <- FALSE
           return()
         }
-        valor <- switch(mutables_opciones[[nombre_local]],
+        valor <- switch(selected_opciones[[nombre_local]],
                         input[[nombre_local]],
                         input[[nombre_local]] * 0.01,
                         input[[nombre_local]],
@@ -210,20 +215,20 @@ server <- function(input, output, session) {
     
     # Cargar modificables a reactiveValues
     for (name in names(selected_modif)) {
-      if (mutables_inflacion[[name]] == 1){
+      if (selected_inflacion[[name]] == 1){
         params[[name]] <- selected_modif[[name]]
       }
     }
     for (nombre in names(params)) {
       if (nombre %in% names(input) && nombre != "perspectiva") {
-        if (mutables_inflacion[[nombre]] == 1){
+        if (selected_inflacion[[nombre]] == 1){
           flags_actualizando[[nombre]] <- TRUE
-          if (mutables_opciones[[nombre]] <= 3) {
-            updateNumericInput(session, inputId = nombre, value = switch(mutables_opciones[[nombre]],
+          if (selected_opciones[[nombre]] <= 3) {
+            updateNumericInput(session, inputId = nombre, value = switch(selected_opciones[[nombre]],
                                                                        params[[nombre]],
                                                                        params[[nombre]] * 100,
                                                                        params[[nombre]]))
-          } else if (mutables_opciones[[nombre]] == 4) {
+          } else if (selected_opciones[[nombre]] == 4) {
             updatePrettyCheckbox(session, inputId = nombre, value = params[[nombre]])
           }
         
@@ -248,6 +253,9 @@ server <- function(input, output, session) {
     } else {
       selected_modif <- mutables[[input$perspectiva]]
     }
+    selected_opciones <<- mutables_opciones[[input$perspectiva]]
+    selected_inflacion <<- mutables_inflacion[[input$perspectiva]]
+    selected_decimales <<- mutables_decimales[[input$perspectiva]]
     print("function actualizar parametros")
     # Cargar modificables a reactiveValues
     for (name in names(selected_modif)) {
@@ -257,12 +265,12 @@ server <- function(input, output, session) {
     for (nombre in names(params)) {
       if (nombre %in% names(input) && nombre != "perspectiva") {
         flags_actualizando[[nombre]] <- TRUE
-        if (mutables_opciones[[nombre]] <= 3) {
-          updateNumericInput(session, inputId = nombre, value = switch(mutables_opciones[[nombre]],
+        if (selected_opciones[[nombre]] <= 3) {
+          updateNumericInput(session, inputId = nombre, value = switch(selected_opciones[[nombre]],
                                                                        params[[nombre]],
                                                                        params[[nombre]] * 100,
                                                                        params[[nombre]]))
-        } else if (mutables_opciones[[nombre]] == 4) {
+        } else if (selected_opciones[[nombre]] == 4) {
           updatePrettyCheckbox(session, inputId = nombre, value = params[[nombre]])
         }
         

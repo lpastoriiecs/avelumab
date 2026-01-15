@@ -106,7 +106,7 @@ procesarResultados <- function(basal, proyectado) {
   )
   #Formateamos la tabla
   tabla_costos[] <- lapply(tabla_costos, function(col) {
-    if (is.numeric(col)) formatear_pesos2(col) else col
+    if (is.numeric(col)) formatear_pesos(col) else col
   })
   #Nombramos Headers
   colnames(tabla_costos) <- c("Categorias", 
@@ -258,6 +258,20 @@ correrModelo <- function(parametros) {
 
   
   cohortes <- estimarPoblacion(parametros)
+  cohorteBasal <- distribuirPoblacion(cohortes, parametros, basal = 1)
+  cohorteProyectada <- distribuirPoblacion(cohortes, parametros, basal = 0)
+  costosMensualesDrogas <- estimarCostosDrogas(parametros)
+  tratamientosDuraciones <- estimarTiempos(parametros)
+  eAdversos <- estimarEfectosAdversos(parametros)
+  costosMensualesSubsecuentes <- estimarCostosSubsecuentes(parametros, costosMensualesDrogas$subsecuentes)
+  
+  costosBasal <- estimarCostos(cohorteBasal, costosMensualesDrogas, tratamientosDuraciones, eAdversos, costosMensualesSubsecuentes, parametros)
+  costosProyectado <- estimarCostos(cohorteProyectada, costosMensualesDrogas, tratamientosDuraciones, eAdversos, costosMensualesSubsecuentes, parametros)
+  
+
+  
+  
+  
   
   #Inicia correr modelo
   resultadosBasal <- 0  
@@ -265,12 +279,266 @@ correrModelo <- function(parametros) {
   
   return(procesarResultados(resultadosBasal, resultadosProyectado))
 }
+estimarCostos <- function(cohorte, cDrogas, tDuraciones, eAdversos, cSubsecuentes, parametros) {
+  
+  estrategias <- c("AVE", "NIV", "BSC", "EVP", "QMTNR")
+  rCostos <- list()
+  
+  for (año in 1:parametros$tHT) {
+    peCostos <- list()
+    for (e in estrategias) {
+      Costos <- list()
+      
+      # Costos de Adquisición Primera Linea
+      
+      # Costos de Adminsitración Primera Linea
+      
+      # Costos de Drogas primera linea
+      
+      # Costos de Efectos Adversos
+      
+      # Costos de manejo de la enfermedad
+      
+      # Costos de Tratamientos subsecuentes
+      
+      # Costos totales
+      
+      peCostos[[e]] <- Costos
+    }
+    rCostos[[año]] <- peCostos
+  }
+}
+distribuirPoblacion <- function(cohortes, parametros, basal) {
+  
+  msCohorte <- list()
 
+  escenario <- ifelse(basal == 1, "EB", "EP")
+  for (año in 1:parametros$tHT)
+  {
+    distribucion <- list()
+    
+    distribucion$EVP <- parametros[[paste0("msEVP", escenario, año)]] * cohortes[[año]]
+    distribucion$NIV <- parametros[[paste0("msNIV", escenario, año)]] * cohortes[[año]]
+    
+    QMT <- (1 - parametros[[paste0("msNIV", escenario, año)]] - parametros[[paste0("msEVP", escenario, año)]]) * cohortes[[año]]
+    
+    distribucion$QMTNR <- QMT * (1 - parametros$pNoProgresa)
+    
+    QMT <- QMT - distribucion$QMTNR
+    
+    distribucion$AVE <- QMT *  parametros[[paste0("msAVE", escenario, año)]]
+    distribucion$BSC <- QMT - distribucion$AVE
+    
+    msCohorte[[año]] <- distribucion
+  }
+  
+  
+  return(msCohorte)
+}
+
+estimarCostosSubsecuentes <- function(parametros, costosDrogas) {
+  
+  costosSubsecuentes <- list()
+  
+  estrategias <- c("AVE", "NIV", "BSC", "EVP", "QMTNR")
+  tratamientosSegundaLinea <- c("Atezolizumab", "Nivolumab", "Pembro", "Durvalumab", "Vinflunine", "Cisplatino", "Carboplatino", "Gemcitabine", "Docetaxel", "Paclitaxel", "EV2", "Erdafitinib")
+  
+  for (e in estrategias)
+  {
+    pAcumulado <- 0
+    costo <- 0
+    duracion <- 0
+    for (tsl in tratamientosSegundaLinea)
+    {
+      pAcumulado <- pAcumulado + parametros[[paste0("pSD_", e, "_", tsl)]]
+      duracion <- duracion + parametros[[paste0("pSD_", e, "_", tsl)]] * parametros[[paste0("tSTD_", e, "_", tsl)]]
+      costo <- costo + parametros[[paste0("pSD_", e, "_", tsl)]] * (costosDrogas$adquisicion[[tsl]] + costosDrogas$administracion[[tsl]])
+      
+    }
+    duracion <- duracion / pAcumulado
+    
+    costosSubsecuentes[[e]] <- list(
+      costo = costo * parametros[[paste0("pSD_", e)]],
+      duracion = duracion
+    )
+  }
+  
+  print(costosSubsecuentes)
+}
+estimarEfectosAdversos <- function(parametros) {
+  
+  estrategias <- c("AVE", "NIV", "BSC", "EVP", "QMTNR")
+  efectosAdversos <- c("Diarrea", "ITU", "Anemia", "Plqd", "GBd", "Hiperglu", "Rash", "Neutd", "Pnp")
+  costosAdversos <- list()
+  for (e in estrategias) 
+  {
+    costoEA <- 0
+    for (ea in efectosAdversos) {
+      costoEA <- costoEA + parametros[[paste0("cEA_", ea)]] * parametros[[paste0("pEA_", ea, "_", e)]]
+      
+    }
+    
+
+    costosAdversos[[e]] <- costoEA
+  }
+  
+  return(costosAdversos)
+  
+  
+}
+estimarTiempos <- function(parametros) {
+  
+  tiemposTratamientos <- list()
+  estrategias <- c("AVE", "NIV", "BSC", "EVP", "QMTNR")
+  
+  for (e in estrategias) 
+  {
+    
+    duracionInduccion <- parametros[[paste0("tDura", e, "I")]]
+    inicioMantenimiento <- parametros[[paste0("tInicioMant", e)]]
+    duracionMantenimiento <- parametros[[paste0("tDura", e, "M")]]
+    sobrevidaGlobal <- parametros[[paste0("tOS", e)]]
+    
+    tiemposTratamientos[[e]] <- list(
+      dInduccion = duracionInduccion,
+      iMantenimiento = inicioMantenimiento,
+      dMantenimiento = duracionMantenimiento,
+      sobrevida = sobrevidaGlobal
+    )
+    
+    
+  }
+  print(tiemposTratamientos)
+  return(tiemposTratamientos)
+}
+estimarCostosDrogas <- function(parametros) {
+  
+  primeraLinea <- list()
+  
+  tratamientosPrimeraLinea <- c("Avelumab", "EV", "Pembro", "Nivolumab", "Cisplatino", "Carboplatino", "Gemcitabine")
+  
+  for (t in tratamientosPrimeraLinea) {
+    
+    dosis <- switch(parametros[[paste0("nTD_", t)]] + 1,
+                    parametros[[paste0("nDos_", t)]],
+                    parametros[[paste0("nDos_", t)]] * parametros$nPeso,
+                    parametros[[paste0("nDos_", t)]] * parametros$nSuperficie,
+                    parametros[[paste0("nDos_", t)]] * (parametros$nFiltrado + 25)
+      
+    )
+    
+    dosisCiclo <- parametros[[paste0("nNA_porCiclo_", t)]] * dosis
+    
+    ciclosMes <- (365.25 / 7 /12) / parametros[[paste0("nCL_", t)]] 
+    
+    dosisMensual <- dosisCiclo * ciclosMes
+    
+    costoMG <- parametros[[paste0("c", t)]] / parametros[[paste0("nVS_", t)]]
+    
+    costoMensual <- dosisMensual * costoMG
+    
+    primeraLinea[[t]] <- costoMensual
+  }
+
+  primeraLinea$QMT <- primeraLinea$Cisplatino * parametros$pCisplatino + primeraLinea$Carboplatino * (1 - parametros$pCisplatino) + primeraLinea$Gemcitabine
+  # ----------------- Costos de Adquisición ------------------------------------
+  costos_adquisicion <- list()
+  costos_administracion <- list()
+
+  costos_adquisicion$Induccion <- list()
+  costos_adquisicion$Mantenimiento <- list()
+  
+  costos_adquisicion$Induccion$Avelumab <- primeraLinea$QMT
+  costos_adquisicion$Mantenimiento$Avelumab <- primeraLinea$Avelumab
+  
+  costos_adquisicion$Induccion$BSC <- primeraLinea$QMT
+  costos_adquisicion$Mantenimiento$BSC <- 0
+  
+  costos_adquisicion$Induccion$QMTNR <- primeraLinea$QMT
+  costos_adquisicion$Mantenimiento$QMTNR <- 0
+  
+  costos_adquisicion$Induccion$EVP <- primeraLinea$EV + primeraLinea$Pembro
+  costos_adquisicion$Mantenimiento$EVP <- primeraLinea$Pembro
+  
+  costos_adquisicion$Induccion$Nivo <- primeraLinea$Nivolumab + primeraLinea$QMT
+  costos_adquisicion$Mantenimiento$Nivo <- primeraLinea$Nivolumab
+  # ----------------- Costos de Administración ------------------------------------
+  costos_administracion$Induccion <- list()
+  costos_administracion$Mantenimiento <- list()
+  
+  costos_administracion$Induccion$Avelumab <- max(parametros$nNA_porCiclo_Gemcitabine, parametros$nNA_porCiclo_Cisplatino) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Cisplatino
+  costos_administracion$Mantenimiento$Avelumab <- parametros$nNA_porCiclo_Avelumab * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Avelumab
+  
+  costos_administracion$Induccion$BSC <- max(parametros$nNA_porCiclo_Gemcitabine, parametros$nNA_porCiclo_Cisplatino) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Cisplatino
+  costos_administracion$Mantenimiento$BSC <- 0
+  
+  costos_administracion$Induccion$QMTNR <- max(parametros$nNA_porCiclo_Gemcitabine, parametros$nNA_porCiclo_Cisplatino) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Cisplatino
+  costos_administracion$Mantenimiento$QMTNR <- 0
+
+  costos_administracion$Induccion$EVP <- max(parametros$nNA_porCiclo_Pembro, parametros$nNA_porCiclo_EV ) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_EV
+  costos_administracion$Mantenimiento$EVP <- parametros$nNA_porCiclo_Pembro * parametros$cAdministracion * (365.25 / 7 / 12) / parametros$nCL_Pembro
+  
+  costos_administracion$Induccion$Nivo <- max(parametros$nNA_porCiclo_Gemcitabine, parametros$nNA_porCiclo_Cisplatino, parametros$nNA_porCiclo_Nivolumab) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Cisplatino
+  costos_administracion$Mantenimiento$Nivo <- parametros$nNA_porCiclo_Nivolumab * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Nivolumab
+  
+  
+  costosPrimeraLinea <- list(
+    adquisicion = costos_adquisicion,
+    administracion = costos_administracion
+  )
+  
+  # ---------------------- Segunda Linea --------------------------
+  
+  tratamientosSegundaLinea <- c("Atezolizumab", "Nivolumab", "Pembro", "Durvalumab", "Vinflunine", "Cisplatino", "Carboplatino", "Gemcitabine", "Docetaxel", "Paclitaxel", "EV2", "Erdafitinib")
+  costo_adquisicion2 <- list()
+  costo_administracion2 <- list()
+  
+  for (t in tratamientosSegundaLinea) {
+    
+    dosis <- switch(parametros[[paste0("nTD_", t)]] + 1,
+                    parametros[[paste0("nDos_", t)]],
+                    parametros[[paste0("nDos_", t)]] * parametros$nPeso,
+                    parametros[[paste0("nDos_", t)]] * parametros$nSuperficie,
+                    parametros[[paste0("nDos_", t)]] * (parametros$nFiltrado + 25)
+                    
+    )
+    
+    dosisCiclo <- parametros[[paste0("nNA_porCiclo_", t)]] * dosis
+    
+    ciclosMes <- (365.25 / 7 /12) / parametros[[paste0("nCL_", t)]] 
+    
+    dosisMensual <- dosisCiclo * ciclosMes
+    
+    costoMG <- parametros[[paste0("c", t)]] / parametros[[paste0("nVS_", t)]]
+    
+    costo_adquisicion2[[t]] <- dosisMensual * costoMG
+    
+    if (!t %in% c("Carboplatino", "Cisplatino", "Erdafitinib")) {
+      costo_administracion2[[t]] <- parametros[[paste0("nNA_porCiclo_", t)]] * (365.25 / 7 /12) / parametros[[paste0("nCL_", t)]] * parametros$cAdministracion
+    } else {
+      costo_administracion2[[t]] <- 0
+    }
+    
+  }
+  
+
+  
+  costosSegundaLinea <- list(
+    adquisicion = costo_adquisicion2,
+    administracion = costo_administracion2
+  )
+  
+  
+  costosDrogas <- list(
+    primeraLinea = costosPrimeraLinea,
+    subsecuentes = costosSegundaLinea
+  )
+  return(costosDrogas)
+}
 estimarPoblacion <- function(parametros) {
   
   
   cohorte <- parametros$nAfiliados
-  
   poblacion <- list()
   
   for(i in 1:parametros$tHT)
