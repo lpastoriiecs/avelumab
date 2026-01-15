@@ -285,25 +285,44 @@ estimarCostos <- function(cohorte, cDrogas, tDuraciones, eAdversos, cSubsecuente
   rCostos <- list()
   
   for (año in 1:parametros$tHT) {
+    #cohortes
     peCostos <- list()
     for (e in estrategias) {
-      Costos <- list()
-      
-      # Costos de Adquisición Primera Linea
-      
-      # Costos de Adminsitración Primera Linea
-      
-      # Costos de Drogas primera linea
-      
-      # Costos de Efectos Adversos
-      
-      # Costos de manejo de la enfermedad
-      
-      # Costos de Tratamientos subsecuentes
-      
-      # Costos totales
-      
-      peCostos[[e]] <- Costos
+      paCostos <- list()
+      for (a in 1:parametros$tHT) {
+        
+        tInduccion <- max(0, min(tDuraciones[[e]]$dInduccion - ((a - 1) * 12), 12))
+        print(paste("En estrategia", e, tDuraciones[[e]]$dInduccion))
+        print(paste("Tiempo en induccion en", e, "de año", a, tInduccion))
+        tMantenimiento <- max(0, 
+                                min(tDuraciones[[e]]$dMantenimiento + tDuraciones[[e]]$iMantenimiento, a * 12) -
+                                max(tDuraciones[[e]]$iMantenimiento, (a - 1) * 12)
+                               
+                              )
+        print(paste("En estrategia", e, tDuraciones[[e]]$dMantenimiento, tDuraciones[[e]]$iMantenimiento))
+        print(paste("Tiempo en induccion en", e, "de año", a, tMantenimiento))
+        tSobrevida <- max(0,
+                          min(tDuraciones[[e]]$sobrevida, a * 12) -
+                          ((a - 1) * 12)
+                          )
+        print(paste("Tiempos de ", e, "en año ", a, tInduccion, tMantenimiento, tSobrevida))
+        # Costos de Adquisición Primera Linea
+          costos$adquisicion <- cohorte[[e]] * (cDrogas$primeraLinea$adquisicion[[e]]$induccion * tDuraciones[[e]]$dInduccion + cDrogas$primeraLinea$adquisicion[[e]]$mantenimiento * tDuraciones[[e]]$dMantenimiento)
+          
+        # Costos de Adminsitración Primera Linea
+          costos$administracion <- cohorte[[e]] * (cDrogas$primeraLinea$administracion[[e]]$induccion * tDuraciones[[e]]$dInduccion + cDrogas$primeraLinea$administracion[[e]]$mantenimiento * tDuraciones[[e]]$dMantenimiento)     
+        # Costos de Drogas primera linea
+          costos$drogas <- costos$adquisicion + costos$administracion
+        # Costos de Efectos Adversos
+        
+        # Costos de manejo de la enfermedad
+        
+        # Costos de Tratamientos subsecuentes
+        
+        # Costos totales
+        
+        peCostos[[e]] <- costos
+      }
     }
     rCostos[[año]] <- peCostos
   }
