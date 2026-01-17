@@ -1,0 +1,12 @@
+name: avelumab
+title: avelumab
+username: iecs
+account: iecs
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16449082
+bundleId: 11457862
+url: https://iecs.shinyapps.io/avelumab/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

@@ -1,6 +1,6 @@
 library(rvest)
 library(lubridate)
-APLICACION_ID <- 8
+APLICACION_ID <- 7
 COLOR_PRIMARIO <- "#014EA3"
 COLOR_GRAFICO2 <- "#014EA3"
 COLOR_GRAFICO1 <- "#f5b85e"

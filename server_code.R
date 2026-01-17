@@ -3,7 +3,7 @@ source("Avelumab.R")
 PERSPECTIVA_SELECTA <- "PAMI"
 cargarDatos()
 selected_opciones <<- mutables_opciones[[PERSPECTIVA_SELECTA]]
-print(selected_opciones)
+#(selected_opciones)
 selected_inflacion <<- mutables_inflacion[[PERSPECTIVA_SELECTA]]
 selected_decimales <<- mutables_decimales[[PERSPECTIVA_SELECTA]]
 
@@ -13,12 +13,12 @@ server <- function(input, output, session) {
   ############################################################ CODIGO DE LOGIN ##############################################################################
   #funcion reactiva
   ajustaInflacion <- reactiveVal(TRUE)
-  #app_visible <- reactiveVal(FALSE) #Cambiar esto a false
-  app_visible <- reactiveVal(TRUE)
+  app_visible <- reactiveVal(FALSE) #Cambiar esto a false
+  #app_visible <- reactiveVal(TRUE)
   showingWaiter <- reactiveVal(TRUE)
   primerCorrida <- TRUE
   #Modulos
-  #user_logged <- mod_login_server(LOGIN_MODULO, APLICACION_ID, app_visible)
+  user_logged <- mod_login_server(LOGIN_MODULO, APLICACION_ID, app_visible)
 
   session$sendCustomMessage("inicializar-tooltips", tooltip_list)
   #Funciones encapsuladas que manejan UI general
@@ -47,21 +47,34 @@ server <- function(input, output, session) {
                  current <- input$toggle_tasa %% 2
                  updateActionButton(session, "toggle_tasa", label = ifelse(current == 1, "+", "−"))
                })
-  observeEvent(input$"toggle_economicos",
+  observeEvent(input$"toggle_subsecuentes",
                {
-                 toggleClass("card-economicos", "collapsed")  # Alterna clase collapsed
+                 toggleClass("card-subsecuentes", "collapsed")  # Alterna clase collapsed
                  # Cambia el texto del botón
-                 current <- input$toggle_economicos %% 2
-                 updateActionButton(session, "toggle_economicos", label = ifelse(current == 1, "+", "−"))
+                 current <- input$toggle_subsecuentes %% 2
+                 updateActionButton(session, "toggle_subsecuentes", label = ifelse(current == 1, "+", "−"))
                })
-  observeEvent(input$"toggle_epidemiologicos",
+  observeEvent(input$"toggle_ea",
                {
-                 toggleClass("card-epidemiologicos", "collapsed")  # Alterna clase collapsed
+                 toggleClass("card-ea", "collapsed")  # Alterna clase collapsed
                  # Cambia el texto del botón
-                 current <- input$toggle_epidemiologicos %% 2
-                 updateActionButton(session, "toggle_epidemiologicos", label = ifelse(current == 1, "+", "−"))
+                 current <- input$toggle_ea %% 2
+                 updateActionButton(session, "toggle_ea", label = ifelse(current == 1, "+", "−"))
                })
-
+  observeEvent(input$"toggle_costos",
+               {
+                 toggleClass("card-costos", "collapsed")  # Alterna clase collapsed
+                 # Cambia el texto del botón
+                 current <- input$toggle_costos %% 2
+                 updateActionButton(session, "toggle_costos", label = ifelse(current == 1, "+", "−"))
+               })
+  observeEvent(input$"toggle_tasas",
+               {
+                 toggleClass("card-tasas", "collapsed")  # Alterna clase collapsed
+                 # Cambia el texto del botón
+                 current <- input$toggle_tasas %% 2
+                 updateActionButton(session, "toggle_tasas", label = ifelse(current == 1, "+", "−"))
+               })
   loginObservers <- function()
   {
     observe({
@@ -161,10 +174,10 @@ server <- function(input, output, session) {
     print("Intento correr modelo")
 #    print(params_inmut)
     req(isolate(active_tab() != "navConfiguracion"))
-    print(paste("Cargo Parmetros:", cargoParametros))
+    #print(paste("Cargo Parmetros:", cargoParametros))
     req(cargoParametros)
-    print("ok")
-    print('Avanzo')
+    ##print("ok")
+   # print('Avanzo')
     if (user_logged()) {
     if (primerCorrida == FALSE){
       waiter_show(
@@ -184,7 +197,7 @@ server <- function(input, output, session) {
   
   #Actualizamos el Parametro al modificar un input
   for (nombre in names(mutables[[sectores[[1]]]])) {
-    print(paste("Actualiza al modificar input: ", nombre))
+    #print(paste("Actualiza al modificar input: ", nombre))
     local({
       nombre_local <- nombre
       observeEvent(input[[nombre_local]], {
@@ -259,7 +272,7 @@ server <- function(input, output, session) {
     print("function actualizar parametros")
     # Cargar modificables a reactiveValues
     for (name in names(selected_modif)) {
-      print(paste("Asigno valor", selected_modif[[name]], "a ", name))
+      #print(paste("Asigno valor", selected_modif[[name]], "a ", name))
       params[[name]] <- selected_modif[[name]]
     }
     for (nombre in names(params)) {
@@ -317,29 +330,29 @@ server <- function(input, output, session) {
   
 
   #INDICADOREs-----------------------------------------
-  output$deltaExitosos <- renderText({
+  output$deltaIndicador1 <- renderText({
     req(resultado_modelo())
-    resultado_modelo()$indicadores$deltaExitosos
+    resultado_modelo()$indicadores$deltaIndicador1
   })
-  output$deltaMuertes <- renderText({
+  output$deltaIndicador2 <- renderText({
     req(resultado_modelo())
-    resultado_modelo()$indicadores$deltaMuertes    
+    resultado_modelo()$indicadores$deltaIndicador2    
   })
-  output$deltaLTFU <- renderText({
+  output$deltaIndicador3 <- renderText({
     req(resultado_modelo())
-    resultado_modelo()$indicadores$deltaLTFU
+    resultado_modelo()$indicadores$deltaIndicador3
   })
-  output$deltaLyLost <- renderText({
+  output$deltaIndicador4 <- renderText({
     req(resultado_modelo())
-    resultado_modelo()$indicadores$deltaLyLost
+    resultado_modelo()$indicadores$deltaIndicador4
   })
-  output$deltaCostoTesteo <- renderText({
+  output$deltaIndicador5 <- renderText({
     req(resultado_modelo())
-    resultado_modelo()$indicadores$deltaCostoTesteo
+    resultado_modelo()$indicadores$deltaIndicador5
   })
-  output$deltaOtrosCostos <- renderText({
+  output$deltaIndicador6 <- renderText({
     req(resultado_modelo())
-    resultado_modelo()$indicadores$deltaOtrosCostos
+    resultado_modelo()$indicadores$deltaIndicador6
   })
   # #GRAFICO PMPM-----------------------------------------
   # output$grhPMPM <- renderPlot({
@@ -411,14 +424,28 @@ server <- function(input, output, session) {
      req(resultado_modelo())  
      resultado_modelo()$tablaCostos
    }, , striped = FALSE, bordered = FALSE, hover = FALSE, spacing = "s", class = "tablaResultados")
-  output$tablaDalys <- renderTable({
-    req(resultado_modelo())
-    resultado_modelo()$tablaDalys
+  output$tablaCostosProy <- renderTable({
+    req(resultado_modelo())  
+    resultado_modelo()$tablaCostosProy
   }, , striped = FALSE, bordered = FALSE, hover = FALSE, spacing = "s", class = "tablaResultados")
-   output$tablaSanitaria <- renderTable({
-     req(resultado_modelo())  
-     resultado_modelo()$tablaSanitaria 
-   }, , striped = FALSE, bordered = FALSE, hover = FALSE, spacing = "s", class = "tablaResultados")
+  output$tablaCostosDiff <- renderTable({
+    req(resultado_modelo())  
+    resultado_modelo()$tablaCostosDiff
+  }, , striped = FALSE, bordered = FALSE, hover = FALSE, spacing = "s", class = "tablaResultados")
+  
+  output$tablaCostosR <- renderTable({
+    req(resultado_modelo())  
+    resultado_modelo()$tablaCostosR
+  }, , striped = FALSE, bordered = FALSE, hover = FALSE, spacing = "s", class = "tablaResultados")
+  output$tablaCostosProyR <- renderTable({
+    req(resultado_modelo())  
+    resultado_modelo()$tablaCostosProyR
+  }, , striped = FALSE, bordered = FALSE, hover = FALSE, spacing = "s", class = "tablaResultados")
+  output$tablaCostosDiffR <- renderTable({
+    req(resultado_modelo())  
+    resultado_modelo()$tablaCostosDiffR
+  }, , striped = FALSE, bordered = FALSE, hover = FALSE, spacing = "s", class = "tablaResultados")
+  
    output$tablaMain <- renderTable({
      req(resultado_modelo())  
      resultado_modelo()$tablaMain 

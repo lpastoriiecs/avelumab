@@ -1,3 +1,4 @@
+# HAy diferencias en manejo de enfermedad de EVP y en Adquisicion de Nivolumab
 
 library(readxl)
 library(dplyr)
@@ -60,24 +61,131 @@ formatear_pesos <- function(x, decimales = 0) {
 formatear_epi <- function(x, decimales = 2) {
   formatC(x, format = "f", big.mark = ".", decimal.mark = ",", digits = decimales)
 }
-formatear_porcentaje <- function(x, decimales = 0) {
+formatear_porcentaje <- function(x, decimales = 2) {
   if (is.numeric(x)){
     return(paste0(formatC(x*100, format = "f", big.mark = ".", decimal.mark = ",", digits = decimales), " %"))} else 
   { return(x)}
 }
-procesarResultados <- function(basal, proyectado) {
+procesarResultados <- function(basal, proyectado, parametros) {
+  
+
   #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   #Recibe los resultados de cada escenario y prepara los outputs%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   #Leandro Pastori - 12/25 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
+  #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
+  crear_tabla_diff <- function(tabla1, tabla2)
+  {
+    cols_anios <- setdiff(names(tabla1), "Categorias")
+    tabla_costos_diff <- tabla1
+    tabla_costos_diff[cols_anios] <-
+      tabla2[cols_anios] - tabla1[cols_anios]
+    
+    tabla_costos_diff
+  }
+  crear_tabla_costos <- function(costos, categorias, campos, tHT, formatear) {
+    
+    tabla <- data.frame(
+      Categorias = categorias,
+      stringsAsFactors = FALSE
+    )
+    
+    for (i in seq_len(tHT)) {
+      tabla[[paste0("Año ", i)]] <-
+        sapply(campos, \(campo) costos[[i]]$total[[campo]])
+    }
+    tabla$Promedio <- sapply(campos, \(campo) costos$total$promedio[[campo]])
+    
+    if (formatear) {
+      tabla[-1] <- lapply(tabla[-1], formatear_pesos)
+    }
+    
+    tabla
+  }
+  formatear_tabla <- function(
+    tabla,
+    filas_pesos = integer(),
+    filas_porcentaje = integer(),
+    filas_epi = integer(),
+    decimales = NULL
+  ) {
+    
+    if (!is.null(decimales)) {
+      stopifnot(length(decimales) == nrow(tabla))
+    }
+    
+    tabla[-1] <- lapply(tabla[-1], function(col) {
+      
+      res <- as.character(col)
+      
+      # PESOS
+      if (length(filas_pesos) > 0) {
+        for (f in filas_pesos) {
+          d <- if (!is.null(decimales) && !is.na(decimales[f])) decimales[f] else 0
+          res[f] <- do.call(
+            formatear_pesos,
+            list(col[f], d)
+          )
+        }
+      }
+      
+      # PORCENTAJE
+      if (length(filas_porcentaje) > 0) {
+        for (f in filas_porcentaje) {
+          d <- if (!is.null(decimales) && !is.na(decimales[f])) decimales[f] else 2
+          res[f] <- do.call(
+            formatear_porcentaje,
+            list(col[f], d)
+          )
+        }
+      }
+      
+      # EPIDEMIOLOGÍA
+      if (length(filas_epi) > 0) {
+        for (f in filas_epi) {
+          d <- if (!is.null(decimales) && !is.na(decimales[f])) decimales[f] else 2
+          res[f] <- do.call(
+            formatear_epi,
+            list(col[f], d)
+          )
+        }
+      }
+      
+      res
+    })
+    
+    tabla
+  }
+  agregarIPPorcentual <- function(tabla, tabla_basal) {
+    
+    fila_ip <- which(tabla$Categorias == "Impacto Presupuestario")
+    
+    nueva_fila <- tabla[fila_ip, , drop = FALSE]
+    nueva_fila$Categorias <- "Impacto Presupuestario (%)"
+    for (c in 2:ncol(tabla)) {
+      nueva_fila[[c]] <- tabla[[c]][fila_ip] / tabla_basal[[c]][fila_ip]
+    }
+    rbind(tabla, nueva_fila)
 
+  }
+  agregarIPPMPM <- function(tabla, cohorte) {
+    
+    fila_ip <- which(tabla$Categorias == "Impacto Presupuestario")
+    nueva_fila <- tabla[fila_ip, , drop = FALSE]
+    nueva_fila$Categorias <- "Impacto Presupuestario PMPM"
+    for (c in 2:ncol(tabla)) {
+
+      nueva_fila[[c]] <- as.numeric(tabla[[c]][fila_ip]) / cohorte / 12
+    }
+    rbind(tabla, nueva_fila)
+    
+  }
   #Indicadores principales de ejemplo para el visualizador.
-  indicadores <- list(deltaExitosos = formatear_epi(1),
-                      deltaMuertes = formatear_epi(2),
-                      deltaLTFU = formatear_epi(3),
-                      deltaLyLost = formatear_epi(4) , 
-                      deltaCostoTesteo = formatear_pesos(5),
-                      deltaOtrosCostos = formatear_pesos(6)
+  indicadores <- list(deltaIndicador1 = formatear_epi(1),
+                      deltaIndicador2 = formatear_epi(2),
+                      deltaIndicador3 = formatear_epi(3),
+                      deltaIndicador4 = formatear_epi(4) , 
+                      deltaIndicador5 = formatear_pesos(5),
+                      deltaIndicador6 = formatear_pesos(6)
   )
 
   # #Eventos sanitarios
@@ -96,105 +204,73 @@ procesarResultados <- function(basal, proyectado) {
   #                                "Comparador", 
   #                                "Intervención", 
   #                                "Diferencia")  
+  bCostos <- basal$costos$PorAño
+  pCostos <- proyectado$costos$PorAño
   
-  #Resultados Costos
-  tabla_costos <- data.frame(
-    Categorias = c("Costos de Testeo"),
-    Escenario_Actual = c(0), 
-    Escenario_Proyectado = c(0),
-    Diferencia =  c(0)
+   #Resultados Costos
+  #Tabla costos detallados
+  campos_costos_detallados <- c(
+    "adquisicion",
+    "administracion",
+    "eAdversos",
+    "Enf",
+    "subseEnf",
+    "subseDrugs",
+    "total"
   )
-  #Formateamos la tabla
-  tabla_costos[] <- lapply(tabla_costos, function(col) {
-    if (is.numeric(col)) formatear_pesos(col) else col
-  })
-  #Nombramos Headers
-  colnames(tabla_costos) <- c("Categorias", 
-                                 "Comparador", 
-                                 "Intervención", 
-                                 "Diferencia")
   
+  categorias_costos_detallados <- c("Costos de Adquisición", "Costos de Administración", "Costos de Efectos Adversos", "Costos de Manejo de la Enfermedad y Monitoreo", "Costos de Monitoreo de tratamientos Subsecuentes", "Costos de Adquisición y Administración de Tratamientos Subsecuentes", "Total")
   
-  # #Resultados DALYS
-  # tabla_dalys <- data.frame(
-  #   Categorias = c("Años de vida perdidos por muerte prematura", "Años de vida perdidos por muerte prematura (d)", "Años de vida Ajustados por Discapacidad por TBC", "Años de vida Ajustados por Discapacidad por vivir con TBC (d)", "Años de Vida Ajustados por Discapacidad", "Años de Vida Ajustados por Discapacidad (d)"),
-  #   Escenario_Actual = c(basal$lyLost, basal$dLyLost, basal$disLost, basal$dDisLost, basal$dalys, basal$dDalys),
-  #   Escenario_Proyectado = c(proyectado$lyLost, proyectado$dLyLost, proyectado$disLost, proyectado$dDisLost, proyectado$dalys, proyectado$dDalys),
-  #   Diferencia =  c(proyectado$lyLost - basal$lyLost, proyectado$dLyLost - basal$dLyLost, proyectado$disLost - basal$disLost, proyectado$dDisLost - basal$dDisLost,  proyectado$dalys - basal$dalys, proyectado$dDalys - basal$dDalys)
-  # )
-  # #Formateamos la tabla
-  #  tabla_dalys[] <- lapply(tabla_dalys, function(col) {
-  #    if (is.numeric(col)) formatear_epi(col) else col
-  #  })
-  # #Nombramos headers
-  # colnames(tabla_dalys) <- c("Categorias",
-  #                             "Comparador",
-  #                             "Intervención",
-  #                             "Diferencia")
+  tabla_costos <- crear_tabla_costos(costos = bCostos, categorias = categorias_costos_detallados, campos = campos_costos_detallados, tHT = parametros$tHT, formatear = FALSE)
+  tabla_costosProy <- crear_tabla_costos(costos = pCostos, categorias = categorias_costos_detallados, campos = campos_costos_detallados, tHT = parametros$tHT, formatear = FALSE)
+  tabla_costosDiff <- crear_tabla_diff(tabla1 = tabla_costos, tabla2 = tabla_costosProy)
   
+  tabla_costos <- formatear_tabla(tabla_costos,  filas_pesos = c(1,2,3,4,5,6,7))
+  tabla_costosProy <- formatear_tabla(tabla_costosProy,  filas_pesos = 1:7)
+  tabla_costosDiff <- formatear_tabla(tabla_costosDiff,  filas_pesos = 1:7)
   
-  # #Calculamos delta costos para estimar ICERS y ROI
-  # costo_total_intervencion <- proyectado$costoTesteo + proyectado$costoProgramatico
-  # diferencia_otros_costos <- basal$otrosCostos - proyectado$otrosCostos
-  # diferencia_costos <- (costo_total_intervencion - basal$costoTesteo) - diferencia_otros_costos
-  # 
-  # dDiferencia_otros_costos <- basal$dOtrosCostos - proyectado$dOtrosCostos
-  # dDiferencia_costos <- (costo_total_intervencion - basal$costoTesteo) - diferencia_otros_costos
-  # 
-  # inversion <- costo_total_intervencion - basal$costoTesteo
-  # #Modificado 23/12 <<<--
-  
-    
-  #[ROI/ICER] en la tabla ahora mostramos el objeto valor dentro de la lista que representa el ICER y el ROI
-  #Preparamos la tabla MAIN 
-  tabla_main <- data.frame(
-    Categorias = c("1"),
-    Valor = c(0),
-    Valor_descontado = c(0)
-   )
-  
-  #Modificado 23/12 -->>>
-  #Formateamos cada valor de la tabla
-  func_format <- c(
-    formatear_epi
+  #Tabla costos resumidos
+  campos_costos_resumidos <- c(
+    "drogas",
+    "eAdversos",
+    "EnfTodo",
+    "subseDrugs",
+    "total"
   )
-  tabla_main$Valor <- mapply(
-    function(f, v) {
-      num <- suppressWarnings(as.numeric(v))
-        if (!is.na(num)) {
-          f(num)
-        } else {
-          v
-        }
-      },
-    func_format,
-    tabla_main$Valor
-  )
-  tabla_main$Valor_descontado <- mapply(
-    function(f, v) {
-      num <- suppressWarnings(as.numeric(v))
-      if (!is.na(num)) {
-        f(num)
-      } else {
-        v
-      }
-    },
-    func_format,
-    tabla_main$Valor_descontado
-  )
-  #Renombramos headers
-  colnames(tabla_main) <- c("Indicador",
-                             "Valor",
-                             "Valor Descontado")
+  
+  categorias_costos_resumidos <- c("Costos de Drogas", "Costos de Efectos Adversos", "Costos de Manejo de la Enfermedad y Monitoreo", "Costos de tratamientos Subsecuentes", "Total")
+  
+  tabla_costosR <- crear_tabla_costos(costos = bCostos, categorias = categorias_costos_resumidos, campos = campos_costos_resumidos, tHT = parametros$tHT, formatear = FALSE)
+  tabla_costosProyR <- crear_tabla_costos(costos = pCostos, categorias = categorias_costos_resumidos, campos = campos_costos_resumidos, tHT = parametros$tHT, formatear = FALSE)
+  tabla_costosDiffR <- crear_tabla_diff(tabla1 = tabla_costosR, tabla2 = tabla_costosProyR)
+  
+  tabla_costosR <- formatear_tabla(tabla_costosR,  filas_pesos = 1:5)
+  tabla_costosProyR <- formatear_tabla(tabla_costosProyR,  filas_pesos = 1:5)
+  tabla_costosDiffR <- formatear_tabla(tabla_costosDiffR,  filas_pesos = 1:5)
+  
+  
+  categoria_main <- c("Costos de Drogas de Primera linea", "Costos de Drogas de segunda linea", "Otros costos sanitarios", "Impacto Presupuestario")
+  campos_main <- c("drogas", "subseDrugs", "otros", "total")
+  
+  tabla_mainB <- crear_tabla_costos(costos = bCostos, categorias = categoria_main, campos = campos_main, tHT = parametros$tHT, formatear = FALSE)
+  tabla_mainP <- crear_tabla_costos(costos = pCostos, categorias = categoria_main, campos = campos_main, tHT = parametros$tHT, formatear = FALSE)
+  tabla_main <- crear_tabla_diff(tabla1 = tabla_mainB, tabla2 = tabla_mainP)
+  tabla_main <- agregarIPPorcentual(tabla = tabla_main, tabla_basal = tabla_mainB)
+  
+  tabla_main <- agregarIPPMPM(tabla = tabla_main, cohorte = parametros$nAfiliados)
+  tabla_main <- formatear_tabla(tabla_main, filas_pesos = c(1, 2, 3, 4, 6), filas_porcentaje = c(5), decimales = c(NA, NA, NA, NA, NA, 2))
   #Devolvemos resultados
   resultado = list(
     indicadores = indicadores,
     tablaCostos = tabla_costos,
-    #tablaSanitaria = tabla_sanitaria,
-    #tablaDalys = tabla_dalys,
+    tablaCostosProy = tabla_costosProy,
+    tablaCostosDiff = tabla_costosDiff,
+    
+    tablaCostosR = tabla_costosR,
+    tablaCostosProyR = tabla_costosProyR,
+    tablaCostosDiffR = tabla_costosDiffR,
+
     tablaMain = tabla_main
-    #infoICER = ifelse(any(incersInfo != ""), incersInfo[incersInfo != ""][1], ""),
-    #infoROI = roi$info
   )
   #Modificado 23/12 -->>>
   return(resultado)  
@@ -258,74 +334,194 @@ correrModelo <- function(parametros) {
 
   
   cohortes <- estimarPoblacion(parametros)
+  print(cohortes)
   cohorteBasal <- distribuirPoblacion(cohortes, parametros, basal = 1)
   cohorteProyectada <- distribuirPoblacion(cohortes, parametros, basal = 0)
   costosMensualesDrogas <- estimarCostosDrogas(parametros)
   tratamientosDuraciones <- estimarTiempos(parametros)
   eAdversos <- estimarEfectosAdversos(parametros)
   costosMensualesSubsecuentes <- estimarCostosSubsecuentes(parametros, costosMensualesDrogas$subsecuentes)
-  
+  print(costosMensualesSubsecuentes)
+  print("RESULTADOS BASAL")
   costosBasal <- estimarCostos(cohorteBasal, costosMensualesDrogas, tratamientosDuraciones, eAdversos, costosMensualesSubsecuentes, parametros)
+  print("RESULTADOS PROYECTADO")
   costosProyectado <- estimarCostos(cohorteProyectada, costosMensualesDrogas, tratamientosDuraciones, eAdversos, costosMensualesSubsecuentes, parametros)
   
-
+  
   
   
   
   
   #Inicia correr modelo
-  resultadosBasal <- 0  
-  resultadosProyectado <- 0  
+  resultadosBasal <- list(
+    costos = costosBasal,
+    cohorte = cohorteBasal
+  )
+  resultadosProyectado <- list(
+    costos = costosProyectado,
+    cohorte = cohorteProyectada
+  )
   
-  return(procesarResultados(resultadosBasal, resultadosProyectado))
+  
+  return(procesarResultados(resultadosBasal, resultadosProyectado, parametros))
 }
 estimarCostos <- function(cohorte, cDrogas, tDuraciones, eAdversos, cSubsecuentes, parametros) {
-  
   estrategias <- c("AVE", "NIV", "BSC", "EVP", "QMTNR")
   rCostos <- list()
-  
   for (año in 1:parametros$tHT) {
     #cohortes
     peCostos <- list()
     for (e in estrategias) {
       paCostos <- list()
       for (a in 1:parametros$tHT) {
+        costos <- list()
         
         tInduccion <- max(0, min(tDuraciones[[e]]$dInduccion - ((a - 1) * 12), 12))
-        print(paste("En estrategia", e, tDuraciones[[e]]$dInduccion))
-        print(paste("Tiempo en induccion en", e, "de año", a, tInduccion))
+
         tMantenimiento <- max(0, 
                                 min(tDuraciones[[e]]$dMantenimiento + tDuraciones[[e]]$iMantenimiento, a * 12) -
                                 max(tDuraciones[[e]]$iMantenimiento, (a - 1) * 12)
                                
                               )
-        print(paste("En estrategia", e, tDuraciones[[e]]$dMantenimiento, tDuraciones[[e]]$iMantenimiento))
-        print(paste("Tiempo en induccion en", e, "de año", a, tMantenimiento))
+
         tSobrevida <- max(0,
                           min(tDuraciones[[e]]$sobrevida, a * 12) -
                           ((a - 1) * 12)
                           )
-        print(paste("Tiempos de ", e, "en año ", a, tInduccion, tMantenimiento, tSobrevida))
+        
+        
+        tPreP_OnT <- min(tDuraciones[[e]]$pfs, max(tDuraciones[[e]]$iMantenimiento, tDuraciones[[e]]$dInduccion) + tDuraciones[[e]]$dMantenimiento)
+        tPreP_OffT <- tDuraciones[[e]]$pfs - tPreP_OnT
+        tProg <- tDuraciones[[e]]$pfs
+        
+       # tPosP_iOnT <- max(tProg, max(tDuraciones[[e]]$iMantenimiento, tDuraciones[[e]]$dInduccion) + tDuraciones[[e]]$dMantenimiento)
+       # tPosP_fOnT <- min(tDuraciones[[e]]$sobrevida, tPosP_iOnT  + cSubsecuentes[[e]]$duracion)
+       # tPos_dOnT <- tPosP_fOnT - tPosP_iOnT
+       # tPosP_OffT <- tDuraciones[[e]]$sobrevida - tPosP_fOnT
+        
+        tOnT_Induccion <- max(0,
+                              min(tDuraciones[[e]]$dInduccion, a * 12) -
+                              ((a - 1) * 12)
+                              )
+        tOnT_Mantenimiento <- max(0,
+                                min(tDuraciones[[e]]$dMantenimiento + tDuraciones[[e]]$iMantenimiento, a * 12) -
+                                max(tDuraciones[[e]]$iMantenimiento, (a - 1) * 12)
+                              )
+        tOffT <- max(0,
+                     min(tDuraciones[[e]]$pfs, a * 12) - 
+                     max(ifelse(e=="QMTNR", 5.2,tPreP_OnT), ((a - 1) * 12))
+                     )
+        
+        iST <- max(max(tDuraciones[[e]]$iMantenimiento, tDuraciones[[e]]$dInduccion) + tDuraciones[[e]]$dMantenimiento, tDuraciones[[e]]$pfs)
+        dST <- min(tDuraciones[[e]]$sobrevida - iST,  cSubsecuentes[[e]]$duracion)
+
+        tSTOn <- max(0,
+                     min(iST + dST, a * 12) -
+                     max(iST, (a - 1) * 12)
+                     )
+        tSTOff <- max(0,
+                      min(tDuraciones[[e]]$sobrevida, a * 12) -
+                      max(iST + dST, (a - 1) * 12)
+        )
+
         # Costos de Adquisición Primera Linea
-          costos$adquisicion <- cohorte[[e]] * (cDrogas$primeraLinea$adquisicion[[e]]$induccion * tDuraciones[[e]]$dInduccion + cDrogas$primeraLinea$adquisicion[[e]]$mantenimiento * tDuraciones[[e]]$dMantenimiento)
+          costos$adquisicion <- cohorte[[año]][[e]] * (cDrogas$primeraLinea$adquisicion$induccion[[e]] * tInduccion + cDrogas$primeraLinea$adquisicion$mantenimiento[[e]] * tMantenimiento)
           
         # Costos de Adminsitración Primera Linea
-          costos$administracion <- cohorte[[e]] * (cDrogas$primeraLinea$administracion[[e]]$induccion * tDuraciones[[e]]$dInduccion + cDrogas$primeraLinea$administracion[[e]]$mantenimiento * tDuraciones[[e]]$dMantenimiento)     
+          costos$administracion <- cohorte[[año]][[e]] * (cDrogas$primeraLinea$administracion$induccion[[e]] * tInduccion + cDrogas$primeraLinea$administracion$mantenimiento[[e]] * tMantenimiento)     
+        
         # Costos de Drogas primera linea
           costos$drogas <- costos$adquisicion + costos$administracion
         # Costos de Efectos Adversos
-        
+          costos$eAdversos <- ifelse(a == 1, eAdversos[[e]], 0) * cohorte[[año]][[e]]
         # Costos de manejo de la enfermedad
-        
+          costos$preOnT <- ((parametros[[paste0("cPreP_OnT_m", e, "I")]] * tOnT_Induccion + parametros[[paste0("cPreP_OnT_o", e, "I")]] * (a == 1)) * cohorte[[año]][[e]]
+          +  (parametros[[paste0("cPreP_OnT_m", e, "M")]] * tOnT_Mantenimiento + parametros[[paste0("cPreP_OnT_o", e, "M")]] * (tDuraciones[[e]]$iMantenimiento >= ((a - 1) * 12) && tDuraciones[[e]]$iMantenimiento <= a * 12)) * cohorte[[año]][[e]])
+          costos$preOffT <-  ifelse(tOffT > 0 ,(parametros[[paste0("cPreP_OffT_m")]] * tOffT + parametros[[paste0("cPreP_OffT_o")]] * (tPreP_OffT >= ((a - 1) * 12) && tPreP_OffT <= (a * 12)  ) ) *   cohorte[[año]][[e]],0)
+          costos$Enf <- costos$preOnT + costos$preOffT
+          
         # Costos de Tratamientos subsecuentes
-        
+          costos$subsecOnT <- (ifelse(tProg >= (a-1) * 12 && tProg <= a * 12, parametros$cProgresion_o, 0) + ((tSTOn * parametros$cPosp_OnT_m + parametros$cPosp_OnT_o * (iST >= (a - 1) * 12 && iST <= a * 12)) *  parametros[[paste0("pSD_", e)]]) + (1 - parametros[[paste0("pSD_", e)]]) * tSTOn * parametros$cPosp_OffT_m) * cohorte[[año]][[e]]
+          costos$subseOffT <- ifelse(tSTOff > 0, (tSTOff * parametros$cPosp_OffT_m + parametros$cPosp_OffT_o * (iST + dST >= (a - 1) * 12 && iST + dST <= a * 12)), 0) * cohorte[[año]][[e]]
+          costos$subseEnf <- costos$subsecOnT  + costos$subseOffT 
+          costos$subseDrugs <- tSTOn * cSubsecuentes[[e]]$costo * cohorte[[año]][[e]]
+
+          costos$EnfTodo <- costos$Enf + costos$subseEnf
+          costos$otros <- costos$EnfTodo + costos$eAdversos
+          
         # Costos totales
-        
-        peCostos[[e]] <- costos
+          costos$total <- costos$drogas + costos$Enf + costos$subseEnf + costos$subseDrugs + costos$eAdversos
+        paCostos[[a]] <- costos
+        #print(paste(e, "-", "Pob", cohorte[[año]][[e]],"Costos en año", a, "de cohorte", año, ": Adquisicion:", costos$adquisicion, "Administracion:", costos$administracion, "Ea", costos$eAdversos))      
       }
+      peCostos[[e]] <- paCostos
     }
     rCostos[[año]] <- peCostos
   }
+  resCostos <- list(porCohorte = rCostos)
+  
+  camposCostos <- c(
+    "adquisicion", "administracion", "drogas", "eAdversos",
+    "preOnT", "preOffT", "Enf",
+    "subsecOnT", "subseOffT", "subseEnf", "EnfTodo", "otros",
+    "subseDrugs", "total"
+  )
+
+  raCostos <- list()
+  yTotal <-  as.list(setNames(rep(0, length(camposCostos)), camposCostos))
+  for (año in 1:parametros$tHT) {
+    pacCostos <- list()
+    total <- as.list(setNames(rep(0, length(camposCostos)), camposCostos))
+    for (e in estrategias) {
+      pecCostos <- as.list(setNames(rep(0, length(camposCostos)), camposCostos))
+      for (i in 1:parametros$tHT) {
+        if (i <= año) {
+          for (campo in names(pecCostos)) {
+            
+            pecCostos[[campo]] <- pecCostos[[campo]] +
+            rCostos[[i]][[e]][[año - i + 1]][[campo]] 
+            total[[campo]] <- total[[campo]] + rCostos[[i]][[e]][[año - i + 1]][[campo]] 
+            yTotal[[campo]] <- yTotal[[campo]] + rCostos[[i]][[e]][[año - i + 1]][[campo]] 
+            #print(paste("Estrategia", e, "Cohorte", i, "en año", año, "corregido", año - i + 1, campo, rCostos[[i]][[e]][[año - i + 1]][[campo]]))
+          }
+        }
+      }
+      pacCostos[[e]] <- pecCostos
+    }
+    pacCostos$total <- total
+    raCostos[[año]] <- pacCostos
+  }
+  resCostos$PorAño <- raCostos
+
+  xTotal <- list()
+  xPromedio <- list()
+  for (e in estrategias) {
+    zTotal <- as.list(setNames(rep(0, length(camposCostos)), camposCostos))
+    zPromedio <- as.list(setNames(rep(0, length(camposCostos)), camposCostos))
+    for (i in 1:parametros$tHT){
+      for (campo in names(pecCostos)) {
+        zTotal[[campo]] <- zTotal[[campo]] +  raCostos[[i]][[e]][[campo]]
+      }
+    }
+    for (campo in names(pecCostos)) {
+      zPromedio[[campo]] <- zTotal[[campo]] / parametros$tHT
+    }
+    xTotal[[e]] <- zTotal
+    xPromedio[[e]] <- zPromedio
+  }
+  raCostos$total <- xTotal
+  raCostos$promedio <- xPromedio
+  yPromedio <- list()
+  for (campo in names(pecCostos)) {
+    yPromedio[[campo]] <- yTotal[[campo]] / parametros$tHT
+  }
+  
+  raCostos$total$total <- yTotal
+  raCostos$total$promedio <- yPromedio
+  resCostos$PorAño <- raCostos
+
+  return(resCostos)
+
 }
 distribuirPoblacion <- function(cohortes, parametros, basal) {
   
@@ -348,6 +544,7 @@ distribuirPoblacion <- function(cohortes, parametros, basal) {
     distribucion$AVE <- QMT *  parametros[[paste0("msAVE", escenario, año)]]
     distribucion$BSC <- QMT - distribucion$AVE
     
+    distribucion$total <- distribucion$AVE + distribucion$BSC + distribucion$QMTNR + distribucion$EVP + distribucion$NIV
     msCohorte[[año]] <- distribucion
   }
   
@@ -381,8 +578,8 @@ estimarCostosSubsecuentes <- function(parametros, costosDrogas) {
       duracion = duracion
     )
   }
-  
-  print(costosSubsecuentes)
+  return(costosSubsecuentes)
+
 }
 estimarEfectosAdversos <- function(parametros) {
   
@@ -416,18 +613,20 @@ estimarTiempos <- function(parametros) {
     duracionInduccion <- parametros[[paste0("tDura", e, "I")]]
     inicioMantenimiento <- parametros[[paste0("tInicioMant", e)]]
     duracionMantenimiento <- parametros[[paste0("tDura", e, "M")]]
+    sobrevidaPF <- parametros[[paste0("tPFS", e)]]
     sobrevidaGlobal <- parametros[[paste0("tOS", e)]]
     
     tiemposTratamientos[[e]] <- list(
       dInduccion = duracionInduccion,
       iMantenimiento = inicioMantenimiento,
       dMantenimiento = duracionMantenimiento,
+      pfs = sobrevidaPF,
       sobrevida = sobrevidaGlobal
     )
     
     
   }
-  print(tiemposTratamientos)
+
   return(tiemposTratamientos)
 }
 estimarCostosDrogas <- function(parametros) {
@@ -464,41 +663,41 @@ estimarCostosDrogas <- function(parametros) {
   costos_adquisicion <- list()
   costos_administracion <- list()
 
-  costos_adquisicion$Induccion <- list()
-  costos_adquisicion$Mantenimiento <- list()
+  costos_adquisicion$induccion <- list()
+  costos_adquisicion$mantenimiento <- list()
   
-  costos_adquisicion$Induccion$Avelumab <- primeraLinea$QMT
-  costos_adquisicion$Mantenimiento$Avelumab <- primeraLinea$Avelumab
+  costos_adquisicion$induccion$AVE <- primeraLinea$QMT
+  costos_adquisicion$mantenimiento$AVE <- primeraLinea$Avelumab
   
-  costos_adquisicion$Induccion$BSC <- primeraLinea$QMT
-  costos_adquisicion$Mantenimiento$BSC <- 0
+  costos_adquisicion$induccion$BSC <- primeraLinea$QMT
+  costos_adquisicion$mantenimiento$BSC <- 0
   
-  costos_adquisicion$Induccion$QMTNR <- primeraLinea$QMT
-  costos_adquisicion$Mantenimiento$QMTNR <- 0
+  costos_adquisicion$induccion$QMTNR <- primeraLinea$QMT
+  costos_adquisicion$mantenimiento$QMTNR <- 0
   
-  costos_adquisicion$Induccion$EVP <- primeraLinea$EV + primeraLinea$Pembro
-  costos_adquisicion$Mantenimiento$EVP <- primeraLinea$Pembro
+  costos_adquisicion$induccion$EVP <- primeraLinea$EV + primeraLinea$Pembro
+  costos_adquisicion$mantenimiento$EVP <- primeraLinea$Pembro
   
-  costos_adquisicion$Induccion$Nivo <- primeraLinea$Nivolumab + primeraLinea$QMT
-  costos_adquisicion$Mantenimiento$Nivo <- primeraLinea$Nivolumab
+  costos_adquisicion$induccion$NIV <- primeraLinea$Nivolumab + primeraLinea$QMT
+  costos_adquisicion$mantenimiento$NIV <- primeraLinea$Nivolumab
   # ----------------- Costos de Administración ------------------------------------
-  costos_administracion$Induccion <- list()
-  costos_administracion$Mantenimiento <- list()
+  costos_administracion$induccion <- list()
+  costos_administracion$mantenimiento <- list()
   
-  costos_administracion$Induccion$Avelumab <- max(parametros$nNA_porCiclo_Gemcitabine, parametros$nNA_porCiclo_Cisplatino) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Cisplatino
-  costos_administracion$Mantenimiento$Avelumab <- parametros$nNA_porCiclo_Avelumab * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Avelumab
+  costos_administracion$induccion$AVE <- max(parametros$nNA_porCiclo_Gemcitabine, parametros$nNA_porCiclo_Cisplatino) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Cisplatino
+  costos_administracion$mantenimiento$AVE <- parametros$nNA_porCiclo_Avelumab * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Avelumab
   
-  costos_administracion$Induccion$BSC <- max(parametros$nNA_porCiclo_Gemcitabine, parametros$nNA_porCiclo_Cisplatino) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Cisplatino
-  costos_administracion$Mantenimiento$BSC <- 0
+  costos_administracion$induccion$BSC <- max(parametros$nNA_porCiclo_Gemcitabine, parametros$nNA_porCiclo_Cisplatino) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Cisplatino
+  costos_administracion$mantenimiento$BSC <- 0
   
-  costos_administracion$Induccion$QMTNR <- max(parametros$nNA_porCiclo_Gemcitabine, parametros$nNA_porCiclo_Cisplatino) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Cisplatino
-  costos_administracion$Mantenimiento$QMTNR <- 0
+  costos_administracion$induccion$QMTNR <- max(parametros$nNA_porCiclo_Gemcitabine, parametros$nNA_porCiclo_Cisplatino) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Cisplatino
+  costos_administracion$mantenimiento$QMTNR <- 0
 
-  costos_administracion$Induccion$EVP <- max(parametros$nNA_porCiclo_Pembro, parametros$nNA_porCiclo_EV ) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_EV
-  costos_administracion$Mantenimiento$EVP <- parametros$nNA_porCiclo_Pembro * parametros$cAdministracion * (365.25 / 7 / 12) / parametros$nCL_Pembro
+  costos_administracion$induccion$EVP <- max(parametros$nNA_porCiclo_Pembro, parametros$nNA_porCiclo_EV ) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_EV
+  costos_administracion$mantenimiento$EVP <- parametros$nNA_porCiclo_Pembro * parametros$cAdministracion * (365.25 / 7 / 12) / parametros$nCL_Pembro
   
-  costos_administracion$Induccion$Nivo <- max(parametros$nNA_porCiclo_Gemcitabine, parametros$nNA_porCiclo_Cisplatino, parametros$nNA_porCiclo_Nivolumab) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Cisplatino
-  costos_administracion$Mantenimiento$Nivo <- parametros$nNA_porCiclo_Nivolumab * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Nivolumab
+  costos_administracion$induccion$NIV <- max(parametros$nNA_porCiclo_Gemcitabine, parametros$nNA_porCiclo_Cisplatino, parametros$nNA_porCiclo_Nivolumab) * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Cisplatino
+  costos_administracion$mantenimiento$NIV <- parametros$nNA_porCiclo_Nivolumab * parametros$cAdministracion * (365.25 / 7 /12) / parametros$nCL_Nivolumab
   
   
   costosPrimeraLinea <- list(

@@ -53,12 +53,12 @@ rateTable <- function(numTech, hTemporal, techName, techId, sufijo, ancho) {
         column(9, fluidRow(
         lapply(1:hTemporal, function(j) {
           column(ancho, autonumericInput(
-            paste0(techId[i], j, sufijo),
+            paste0(techId[i], sufijo, j),
             label = NULL,
             value = NULL,
             class = "rtInput",
             align = "center",
-            currencySymbol = "%", currencySymbolPlacement = "s", decimalCharacter = ",", digitGroupSeparator = ".", minimumValue = 0, maximumValue = 100, decimalPlaces = selected_decimales[[paste0(techId[i], j, sufijo)]]
+            currencySymbol = "%", currencySymbolPlacement = "s", decimalCharacter = ",", digitGroupSeparator = ".", minimumValue = 0, maximumValue = 100, decimalPlaces = selected_decimales[[paste0(techId[i], sufijo, j)]]
           ))
         })))
       )
@@ -91,42 +91,40 @@ panelResPrincipales <- tags$div(class = "panelRes",
                                       ),
                               )
 )
-panelResResumidos <- tags$div(class = "panelRes",
-                                div(class = "tablas-escenarios",
-                                  div(class="tablaResultados",
-                                  h4("Resultados Dalys", class = "tabla-titulo"),
-                                  div(class="tablawrapper",
-                                  tableOutput("tablaDalys"))),
-                                  # div(class="tablaResultados",
-                                  # h4("Escenario Proyectado", class = "tabla-titulo"),
-                                  # div(class="tablawrapper",
-                                  # tableOutput("tablaResProy"))),
-                                  # div(class="tablaResultados",
-                                  # h4("Diferencia", class = "tabla-titulo"),
-                                  # div(class="tablawrapper",
-                                  # tableOutput("tablaResDif"))),
-                                  # div(class = "pieTabla",
-                                  #     textOutput("pieTablaResumidos")
-                                  # )
-                                  )
-                                  )
-                                  
+
 panelResCostos <- tags$div(class = "panelRes",
                                 div(class = "tablas-escenarios",
                                     div(class="tablaResultados",
-                                        h4("Resultados Costos", class = "tabla-titulo"),
+                                        h4("Escenario Actual", class = "tabla-titulo"),
                                         tableOutput("tablaCostos")),
-                                    # div(class = "pieTabla",
-                                    #     textOutput("pieTablaDetallados")
-                                    # )
-                                )
-)
-panelResSanitarios <- tags$div(class = "panelRes",
+                                ),
                                div(class = "tablas-escenarios",
                                    div(class="tablaResultados",
-                                       h4("Resultados Sanitarios", class = "tabla-titulo"),
-                                       tableOutput("tablaSanitaria")),
-                               )
+                                       h4("Escenario Proyectado", class = "tabla-titulo"),
+                                       tableOutput("tablaCostosProy")),
+                               ),
+                           div(class = "tablas-escenarios",
+                               div(class="tablaResultados",
+                                   h4("Diferencia de Costos", class = "tabla-titulo"),
+                                   tableOutput("tablaCostosDiff")),
+                           ),                  
+)
+panelResCostosR <- tags$div(class = "panelRes",
+                            div(class = "tablas-escenarios",
+                                div(class="tablaResultados",
+                                    h4("Escenario Actual", class = "tabla-titulo"),
+                                    tableOutput("tablaCostosR")),
+                            ),
+                            div(class = "tablas-escenarios",
+                                div(class="tablaResultados",
+                                    h4("Escenario Proyectado", class = "tabla-titulo"),
+                                    tableOutput("tablaCostosProyR")),
+                            ),
+                            div(class = "tablas-escenarios",
+                                div(class="tablaResultados",
+                                    h4("Diferencia de Costos", class = "tabla-titulo"),
+                                    tableOutput("tablaCostosDiffR")),
+                            ),    
 )
 
 panelcitoOutput <- function(titulo, valor, color, icono) {
@@ -185,6 +183,11 @@ panelVisualizador <- div(id = "visualizadorPanel",
                                  selected = "PAMI"
                                ),
                                 fNumInput("nAfiliados"),
+                                fNumInput("cAvelumab"),
+                                fNumInput("cEV"),
+                                fNumInput("cPembro"),
+                                fNumInput("cNivolumab"),
+                               
                                 div(style = "display:flex; gap:0px;",
                                 prettyCheckbox("bInflacion", "Ajustar costos por Inflación", shape = "square", status = "primary", outline = TRUE, icon = icon("check", class ="chkIcon"), value = TRUE),
                                 iButton("inflacion") 
@@ -195,23 +198,22 @@ panelVisualizador <- div(id = "visualizadorPanel",
                            ),
                            div(id = "colRes",
                              class = "colRes",
-                             h3("Diferencias entre el escenario actual y el proyectado"),
+                             h3("Indicadores Promedio Por Año"),
                              div(class = "resTabCarteles",
-                                 panelcitoOutput("Tratamientos Exitosos", textOutput("deltaExitosos"), COLOR_PRIMARIO, "fas fa-syringe"),
-                                 panelcitoOutput("Muertes", textOutput("deltaMuertes"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
-                                 panelcitoOutput("LTFU", textOutput("deltaLTFU"), COLOR_PRIMARIO, "fas fa-procedures"),
-                                 panelcitoOutput("Ly Perdidos", textOutput("deltaLyLost"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
-                                 panelcitoOutput("Costos de Testeo", textOutput("deltaCostoTesteo"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
-                                 panelcitoOutput("Otros Costos", textOutput("deltaOtrosCostos"),COLOR_PRIMARIO, "fas fa-dollar-sign"),
+                                 panelcitoOutput("Indicador", textOutput("deltaIndicador1"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
+                                 panelcitoOutput("Indicador", textOutput("deltaIndicador2"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
+                                 panelcitoOutput("Indicador", textOutput("deltaIndicador3"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
+                                 panelcitoOutput("Indicador", textOutput("deltaIndicador4"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
+                                 panelcitoOutput("Indicador", textOutput("deltaIndicador5"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
+                                 panelcitoOutput("Indicador", textOutput("deltaIndicador6"),COLOR_PRIMARIO, "fas fa-dollar-sign"),
                                  ),
                              div(id = "resTabDiv",
                               navset_card_underline(
                                  id = "resTab",
                                  title = "Resultados",
                                  nav_panel("Principales", panelResPrincipales),
-                                 #nav_panel("Dalys", panelResResumidos),
-                                 nav_panel("Costos", panelResCostos),
-                                 #nav_panel("Sanitarios", panelResSanitarios),
+                                 nav_panel("Costos Resumidos", panelResCostosR),
+                                 nav_panel("Costos Detallados", panelResCostos),
                                  footer = card_body("IP PMPM = Impacto Presupuestario Por Miembro Por Mes, IPC = Indice de Precios al Consumidor", class="tabfooter"),
                                  full_screen = TRUE
                                )
@@ -230,31 +232,79 @@ panelIntroduccion <- div(id ="introduccionPanel",
                          )
 
 panelConfiguracion <- div(id = "configuracionPanel",
+                          
+                          div(class = "card-wrapper",
+                              div(class = "card-wrapper-header",
+                                  h3("Costos de Tratamiento"),
+                                  actionButton("toggle_costos", "−", class = "card-wrapper-min")
+                              ),
+                              div(id = "card-costos", class = "card-wrapper-body",
+                                  fluidRow(
+                                    column(3,
+                                           fNumInput("cCisplatino"),
+
+                                    ),
+                                    column(3,
+                                           fNumInput("cCarboplatino"),
+
+                                    ),
+                                    column(3,
+                                           fNumInput("cGemcitabine"),
+                                    ),
+                                    column(3,
+                                           fNumInput("cAdministracion"),
+                                    )
+                                  )
+                              )
+                          ),
+                          div(class = "card-wrapper",
+                              div(class = "card-wrapper-header",
+                                  h3("Tasas de Mercado"),
+                                  actionButton("toggle_tasas", "−", class = "card-wrapper-min")
+                              ),
+                              div(id = "card-tasas", class = "card-wrapper-body",
+                                  fluidRow(
+                                    column(6,
+                                           h4("Escenario Actual"),
+                                           h5("Primera Linea"),
+                                           rateTable(2, 5, c("Enfortumab Vedotin + Pembrolizumab", "Nivolumab"), c("msEVPE", "msNIVE"), "B", 2),
+                                           h5("Mantenimiento dado que recibió quimioterapia basda en platinos"),
+                                           rateTable(1, 5, c("Avelumab"), c("msAVEE"), "B", 2),
+                                    ),
+                                    column(6,
+                                           h4("Escenario Proyectado"),
+                                           h5("Primera Linea"),
+                                           rateTable(2, 5, c("Enfortumab Vedotin + Pembrolizumab", "Nivolumab"), c("msEVPE", "msNIVE"), "P", 2),
+                                           h5("Mantenimiento dado que recibió quimioterapia basda en platinos"),
+                                           rateTable(1, 5, c("Avelumab"), c("msAVEE"), "P", 2),                                    )
+                                  )
+                              )
+                          ),
                               div(class = "card-wrapper",
                                   div(class = "card-wrapper-header",
-                                        h3("Parámetros Epidemiológicos"),
-                                        actionButton("toggle_epidemiologicos", "−", class = "card-wrapper-min")
+                                        h3("Costos de Efectos Adversos"),
+                                        actionButton("toggle_ea", "−", class = "card-wrapper-min")
                                       ),
-                                  div(id = "card-epidemiologicos", class = "card-wrapper-body",
+                                  div(id = "card-ea", class = "card-wrapper-body",
                                       fluidRow(
                                                 column(4,
-                                                       #  fNumInput("uTBCNoTratada"),
-                                                       #  fNumInput("uTBCTratada"),
-                                                       # fNumInput("uTBCNoTratadaMDR"),
+                                                       fNumInput("cEA_Diarrea"),
+                                                       fNumInput("cEA_Plqd"),
+                                                       fNumInput("cEA_Rash"),
                                                        # fNumInput("uTBCTratadaMDR"),
                                                        
                                                        ),
                                                 column(4,
-                                                       #  fNumInput("pTtoExitoso"),
-                                                       # fNumInput("pMuerte"),
-                                                       # fNumInput("pTtoExitosoMDR"),
+                                                       fNumInput("cEA_ITU"),
+                                                       fNumInput("cEA_GBd"),
+                                                       fNumInput("cEA_Neutd"),
                                                        # fNumInput("pMuerteMDR")
 
                                                        ),
                                                 column(4,
-                                                        # fNumInput("pNAATSensibilidad"),
-                                                        # fNumInput("pNAATEspecificidad"),
-                                                        # fNumInput("pBCPSensibilidad"),
+                                                       fNumInput("cEA_Anemia"),
+                                                       fNumInput("cEA_Hiperglu"),
+                                                       fNumInput("cEA_Pnp"),
                                                         # fNumInput("pBCPEspecificidad")
                                                        )
                                               )
@@ -262,23 +312,26 @@ panelConfiguracion <- div(id = "configuracionPanel",
                                   ),
                               div(class = "card-wrapper",
                                   div(class = "card-wrapper-header", 
-                                      h3("Parámetros Económicos"),
-                                      actionButton("toggle_economicos", "−", class = "card-wrapper-min")
+                                      h3("Tratamientos Subsecuentes"),
+                                      actionButton("toggle_subsecuentes", "−", class = "card-wrapper-min")
                                   ),
-                                  div(id = "card-economicos", class = "card-wrapper-body",
+                                  div(id = "card-subsecuentes", class = "card-wrapper-body",
                                   fluidRow(
                                             column(4, 
-                                                    # fNumInput("cBCP"),
-                                                    # fNumInput("cNAAT"),
+                                                    fNumInput("pSD_AVE"),
+                                                    fNumInput("pSD_NIV"),
+                                                    fNumInput("cVinflunine"),
                                                    ),
                                           
                                             column(4, 
-                                                    # fNumInput("cCultivo"),
-                                                    # fNumInput("cAntibiograma")
+                                                    fNumInput("pSD_BSC"),
+                                                    fNumInput("pSD_EVP"),
+                                                   fNumInput("cPaclitaxel"),
                                                    ),
                                             column(4, 
-                                                    # fNumInput("cTratamiento"),
-                                                    # fNumInput("cTratamientoMDR"),
+                                                    fNumInput("pSD_QMTNR"),
+                                                    fNumInput("cAtezolizumab"),
+                                                   fNumInput("cErdafitinib"),
                                                    )
                                           ),
                                   )
@@ -300,7 +353,7 @@ panelAPP <- div(id = "appPanel",
                   class = "top-bar",
                   tags$div(class = "top-bar-component",
                     actionButton("toggleSidebar", label = NULL, icon = tags$i(class = "fa icon-bars"), class = "menu-btn"),
-                    tags$h3("Avelumab", class = "title")
+                    tags$h3("AIP Avelumab", class = "title")
                   ),
                   tags$div(class = "top-bar-component",
                     tags$img(src = "imagenes/LOGO_IECS.png", height = "50px")
@@ -343,9 +396,9 @@ ui <- fluidPage(
     tags$script(src = paste0("script.js?v=", as.integer(Sys.time()))),
   ),
   useShinyjs(),
-  #(mod_login_ui(LOGIN_MODULO)),
-  #hidden(panelAPP),
-  hidden(mod_login_ui(LOGIN_MODULO)),
-  (panelAPP)
+  (mod_login_ui(LOGIN_MODULO)),
+  hidden(panelAPP),
+  #hidden(mod_login_ui(LOGIN_MODULO)),
+  #(panelAPP)
   
   )
