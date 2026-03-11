@@ -17,6 +17,15 @@ server <- function(input, output, session) {
   #app_visible <- reactiveVal(TRUE)
   showingWaiter <- reactiveVal(TRUE)
   primerCorrida <- TRUE
+
+  w_res <- Waiter$new(
+    id = "resTabDiv",
+    html = tagList(
+      spin_ring(),
+      p("Calculando...", style = paste0("color:", COLOR_PRIMARIO, "; font-weight:600; margin-top:10px;"))
+    ),
+    color = "rgba(255,255,255,0.88)"
+  )
   #Modulos
   user_logged <- mod_login_server(LOGIN_MODULO, APLICACION_ID, app_visible)
 
@@ -180,14 +189,12 @@ server <- function(input, output, session) {
    # print('Avanzo')
     if (user_logged()) {
     if (primerCorrida == FALSE){
-      waiter_show(
-        html = div(style = paste0("color: ", COLOR_PRIMARIO, "; font-size: 50px;", class="spinner")),
-        color = "rgba(255, 255, 255, 0.2)"  # fondo casi transparente
-      )
+      w_res$show()
       showingWaiter(TRUE)
     }
     res <- correrModelo(reactiveValuesToList(params))
     #res <- correrFuncion(reactiveValuesToList(params))
+    w_res$hide()
     showingWaiter(FALSE)
     return(res)
     } else { 
