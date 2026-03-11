@@ -194,7 +194,9 @@ server <- function(input, output, session) {
     }
     res <- correrModelo(reactiveValuesToList(params))
     #res <- correrFuncion(reactiveValuesToList(params))
-    w_res$hide()
+    if (primerCorrida == FALSE){
+      w_res$hide()
+    }
     showingWaiter(FALSE)
     return(res)
     } else { 
