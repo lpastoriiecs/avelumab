@@ -1,4 +1,19 @@
-  Shiny.addCustomMessageHandler('inicializar-tooltips', function(tooltips) {
+// Numeric inputs: solo disparan al perder foco.
+// Parcheamos el subscribe del binding ANTES de que Shiny lo use.
+// Shiny.js ya está cargado cuando script.js se ejecuta, por lo que
+// Shiny.inputBindings.bindingNames['shiny.numberInput'] ya existe.
+(function() {
+  var b = Shiny.inputBindings.bindingNames['shiny.numberInput'];
+  if (!b) return;
+  b.binding.subscribe = function(el, callback) {
+    $(el).on('change.numberInputBinding', function() { callback(true); });
+  };
+  b.binding.unsubscribe = function(el) {
+    $(el).off('.numberInputBinding');
+  };
+}());
+
+Shiny.addCustomMessageHandler('inicializar-tooltips', function(tooltips) {
     Object.entries(tooltips).forEach(([id, config]) => {
       const el = document.getElementById(id);
       if (el) {

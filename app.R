@@ -5,7 +5,6 @@ library(ggplot2)
 library(shinyWidgets)
 library(shinyFeedback)
 library(markdown)
-packageVersion("shinyWidgets")
 source("login.R")
 source("global.R")
 source("server_code.R")
@@ -13,4 +12,4 @@ source("ui_code.R")
 source("db.R")
 
 
-shinyApp(server = server, ui = ui)
+shinyApp(server = server, ui = ui, options = list(launch.browser = TRUE))
