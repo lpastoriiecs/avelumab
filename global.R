@@ -15,6 +15,8 @@ sectores <<- c("PAMI", "SEGURIDAD SOCIAL", "PRIVADO")
 DISCLAIMER_TITLE <- "Avelumab"
 PIE_DE_TABLA1 <- "Costos actualizados a %1 por IPC según INDEC."
 PIE_DE_TABLA2 <- "Costos estimados a mayo de 2025."
+PIE_DE_TABLA3 <- "Costos actualizados a %1 por AlfaBeta."
+PIE_DE_TABLA4 <- "Costos actualizados a %1 por IPC según INDEC y AlfaBeta."
 
 cargarEtiquetasTooltips <- function(){
     etiquetas_tooltipsdf <- readxl::read_excel("tooltips.xlsx")
@@ -35,10 +37,12 @@ cargar <- function() {
   
   data <- read_excel("lparametros.xlsx", sheet = "parametros")
   
+
   parametros_sectores <- list()
   parametros_inflacion <- list()
   parametros_tipo <- list()
   parametros_decimales <- list()
+
   for (i in sectores) {
     datafiltrada <- data[toupper(data$Sector) %in% c(i, "GLOBAL"), ]
     PARAMETROS <- as.list(datafiltrada$Valor)
@@ -61,29 +65,51 @@ cargarDatos <- function() {
   
   res <- cargar()
   clas <- read_excel("lparametros.xlsx", sheet = "parametros")
-  print(res$configuracion$tipo)
-  mutables_opciones <<- res$tipo
-  mutables_decimales <<- res$decimales
-  mutables_inflacion <<- res$inflacion
 
-  mutables <<- res$parametros
+  vParametros_opciones <<- res$tipo
+  vParametros_decimales <<- res$decimales
+  vParametros_inflacion <<- res$inflacion
+  vParametros <<- res$parametros
+
   print("Datos Cargados")
   
 }
+updateWeb <- function(nombreParametro) {
+  # mockup - a implementar
+  return(list(valor = NULL, actualizo = FALSE))
+}
+
 ajustarDatos <- function(parametros, inflacionModificador, parametroInflacion) {
-  
+
   respuesta <- parametros  # inicializás copia
-  
+  multiplicador <- ifelse(inflacionModificador != 0, inflacionModificador, 1)
+  huboIPC <- inflacionModificador != 0
+  huboWeb <- FALSE
+
   for (param in names(parametros)) {
-    print(param)
     ajusto <- parametroInflacion[[param]]
-    if (!is.null(ajusto) && ajusto == 1) {
-      respuesta[[param]] <- parametros[[param]] * inflacionModificador
+    if (!is.null(ajusto)) {
+      if (ajusto == 1) {
+        respuesta[[param]] <- parametros[[param]] * multiplicador
+      } else if (ajusto == 2) {
+        resWeb <- updateWeb(param)
+        if (resWeb$actualizo) {
+          respuesta[[param]] <- resWeb$valor
+          huboWeb <- TRUE
+        } else {
+          respuesta[[param]] <- parametros[[param]]
+        }
+      }
     }
   }
-  return(respuesta)
-  
+
+  tipoAjuste <- if (huboIPC && huboWeb) 3 else if (huboWeb) 2 else if (huboIPC) 1 else 0
+
+  return(list(respuesta, tipoAjuste))
+
 }
+
+
 obtenerInflacion <- function(fechaInicio) {
   
   url <- "https://animated-syrniki-03194d.netlify.app/"

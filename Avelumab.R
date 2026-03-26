@@ -215,10 +215,10 @@ procesarResultados <- function(basal, proyectado, incrementales, parametros, cos
   # Indicadores principales de ejemplo para el visualizador.
   indicadores <- list(
     deltaIndicador1 = formatear_epi(incrementales$Total / parametros$tHT),
-    deltaIndicador2 = formatear_pesos(impactoAVE),
-    deltaIndicador3 = formatear_epi(impactoAVEp),
-    deltaIndicador4 = formatear_epi(rImpactoEVP),
-    deltaIndicador5 = formatear_epi(rImpactoNIV)
+    deltaIndicador2 = formatear_epi(rImpactoEVP), 
+    deltaIndicador3 = formatear_epi(rImpactoNIV),
+    deltaIndicador4 = formatear_epi(impactoAVEp),
+    deltaIndicador5 = formatear_pesos(impactoAVE)
   )
 
   # #Eventos sanitarios

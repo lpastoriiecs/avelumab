@@ -278,11 +278,11 @@ panelVisualizador <- div(
     div(
       class = "resTabCarteles",
       panelFilaOutput("tratados con Avelumab (Incremental)", textOutput("deltaIndicador1"), COLOR_PRIMARIO, unidad = "pacientes"),
-      panelcitoOutput("Impacto Presupuestario", textOutput("deltaIndicador2"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
-      panelcitoOutput("Impacto Presupuestario", textOutput("deltaIndicador3"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
-      panelFilaOutput("el impacto presupuestario utilizando Cisplatino+Nivolumab", textOutput("deltaIndicador4"), COLOR_PRIMARIO, unidad = "veces"),
-      panelFilaOutput("el impacto presupuestario utilizando Enfortumab Vedotin + Pembrolizumab", textOutput("deltaIndicador5"), COLOR_PRIMARIO, unidad = "veces"),
-      # panelcitoOutput("Indicador", textOutput("deltaIndicador6"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
+      panelFilaOutput("el impacto presupuestario utilizando Enfortumab Vedotin + Pembrolizumab", textOutput("deltaIndicador2"), COLOR_PRIMARIO, unidad = "veces"),
+      panelFilaOutput("el impacto presupuestario utilizando Cisplatino+Nivolumab", textOutput("deltaIndicador3"), COLOR_PRIMARIO, unidad = "veces"),
+      panelcitoOutput("Impacto Presupuestario", textOutput("deltaIndicador4"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
+      panelcitoOutput("Impacto Presupuestario", textOutput("deltaIndicador5"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
+            # panelcitoOutput("Indicador", textOutput("deltaIndicador6"), COLOR_PRIMARIO, "fas fa-dollar-sign"),
     ),
     div(
       id = "resTabDiv",
@@ -290,10 +290,10 @@ panelVisualizador <- div(
         id = "resTab",
         title = "Resultados",
         nav_panel("Principales", panelResPrincipales),
-        nav_panel("Costos Resumidos", panelResCostosR),
-        nav_panel("Costos Detallados", panelResCostos),
-        nav_panel("Alternativos", panelResAlternativos),
         nav_panel("Costo de Cuidado", panelCoC),
+        nav_panel("Costos Resumidos", panelResCostosR),
+        nav_panel("Alternativos", panelResAlternativos),
+        nav_panel("Costos Detallados", panelResCostos),
         full_screen = TRUE
       )
     ),

@@ -2,10 +2,11 @@ source("login.R")
 source("Avelumab.R")
 PERSPECTIVA_SELECTA <- "PAMI"
 cargarDatos()
-selected_opciones <<- mutables_opciones[[PERSPECTIVA_SELECTA]]
+
+selected_opciones <<- vParametros_opciones[[PERSPECTIVA_SELECTA]]
 # (selected_opciones)
-selected_inflacion <<- mutables_inflacion[[PERSPECTIVA_SELECTA]]
-selected_decimales <<- mutables_decimales[[PERSPECTIVA_SELECTA]]
+selected_inflacion <<- vParametros_inflacion[[PERSPECTIVA_SELECTA]]
+selected_decimales <<- vParametros_decimales[[PERSPECTIVA_SELECTA]]
 
 cargarEtiquetasTooltips()
 
@@ -23,21 +24,29 @@ server <- function(input, output, session) {
   session$sendCustomMessage("inicializar-tooltips", tooltip_list)
   # Funciones encapsuladas que manejan UI general
 
-
+  #----AJUSTE POR INFLACIÓN
   informacionInflacion <- obtenerInflacion(FECHA_COSTOS)
 
+
+  #Si existe data de inflación ajustamos los parámetros por inflación
   if (!is.null(informacionInflacion)) {
     modificadorInflacion <- informacionInflacion[[1]]
     fechaInflacion <- informacionInflacion[[2]]
   } else {
-    modificadorInflacion <- 1
+    modificadorInflacion <- 0
+    fechaInflacion <- format(Sys.Date(), "%m-%Y")
   }
-  sMutables <- list()
+  vInfParametros <- list()
+  tipoAjuste <- list()
 
   for (c in sectores) {
-    sMutables[[c]] <- ajustarDatos(mutables[[c]], modificadorInflacion, mutables_inflacion[[c]])
+    res <- ajustarDatos(vParametros[[c]], modificadorInflacion, vParametros_inflacion[[c]])
+    vInfParametros[[c]] <- res[[1]]
+    tipoAjuste[[c]] <- res[[2]]
   }
+  #-----AJUSTE POR INFLACIÓN
 
+  
   user_logged <- reactiveVal(TRUE)
   observeEvent(input$"toggle_tasa", {
     toggleClass("card-tasa", "collapsed") # Alterna clase collapsed
@@ -153,7 +162,7 @@ server <- function(input, output, session) {
   cargoParametros <<- NULL
   flags_actualizando <- reactiveValues()
   # Inicializo todos en FALSE
-  for (nombre in names(mutables[[sectores[[1]]]])) {
+  for (nombre in names(vParametros[[sectores[[1]]]])) {
     flags_actualizando[[nombre]] <- FALSE
   }
 
@@ -183,7 +192,7 @@ server <- function(input, output, session) {
   })
 
   # Actualizamos el Parametro al modificar un input
-  for (nombre in names(mutables[[sectores[[1]]]])) {
+  for (nombre in names(vParametros[[sectores[[1]]]])) {
     local({
       nombre_local <- nombre
       observeEvent(input[[nombre_local]],
@@ -226,22 +235,28 @@ server <- function(input, output, session) {
   }
 
 
-  inflacionarParametros <- function() {
+  actualizarParametros <- function(soloInflacion = FALSE) {
     if (ajustaInflacion() == TRUE) {
-      selected_modif <- sMutables[[input$perspectiva]]
+      selected_modif <- vInfParametros[[input$perspectiva]]
     } else {
-      selected_modif <- mutables[[input$perspectiva]]
+      selected_modif <- vParametros[[input$perspectiva]]
     }
 
-    # Cargar modificables a reactiveValues
+    if (!soloInflacion) {
+      selected_opciones <<- vParametros_opciones[[input$perspectiva]]
+      selected_inflacion <<- vParametros_inflacion[[input$perspectiva]]
+      selected_decimales <<- vParametros_decimales[[input$perspectiva]]
+    }
+
     for (name in names(selected_modif)) {
-      if (selected_inflacion[[name]] == 1) {
+      if (!soloInflacion || selected_inflacion[[name]] == 1) {
         params[[name]] <- selected_modif[[name]]
       }
     }
+
     for (nombre in names(params)) {
       if (nombre %in% names(input) && nombre != "perspectiva") {
-        if (selected_inflacion[[nombre]] == 1) {
+        if (!soloInflacion || selected_inflacion[[nombre]] > 0) {
           flags_actualizando[[nombre]] <- TRUE
           if (selected_opciones[[nombre]] <= 3) {
             updateNumericInput(session, inputId = nombre, value = switch(selected_opciones[[nombre]],
@@ -255,79 +270,38 @@ server <- function(input, output, session) {
             updateSliderInput(session, inputId = nombre, value = params[[nombre]])
           }
         }
-      } else {
-        # if (substr(nombre, 1, nchar(nombre) - 1) == "msTeplizumab")
-        # {
-        #  print(paste("Deberia haber asignado TRUE a", nombre))
-        #  flags_actualizando[[nombre]] <- TRUE
-        #  updateNumericInput(session, inputId = paste0("t", nombre), value = params[[nombre]] * 100)
-        #
-        # }
       }
-    }
-    cargoParametros <<- TRUE
-  }
-  actualizarParametros <- function() {
-    if (ajustaInflacion() == TRUE) {
-      selected_modif <- sMutables[[input$perspectiva]]
-    } else {
-      selected_modif <- mutables[[input$perspectiva]]
-    }
-    selected_opciones <<- mutables_opciones[[input$perspectiva]]
-    selected_inflacion <<- mutables_inflacion[[input$perspectiva]]
-    selected_decimales <<- mutables_decimales[[input$perspectiva]]
-    # Cargar modificables a reactiveValues
-    for (name in names(selected_modif)) {
-      params[[name]] <- selected_modif[[name]]
-    }
-    for (nombre in names(params)) {
-      if (nombre %in% names(input) && nombre != "perspectiva") {
-        flags_actualizando[[nombre]] <- TRUE
-        if (selected_opciones[[nombre]] <= 3) {
-          updateNumericInput(session, inputId = nombre, value = switch(selected_opciones[[nombre]],
-            params[[nombre]],
-            params[[nombre]] * 100,
-            params[[nombre]]
-          ))
-        } else if (selected_opciones[[nombre]] == 4) {
-          updatePrettyCheckbox(session, inputId = nombre, value = params[[nombre]])
-        } else if (selected_opciones[[nombre]] == 5) {
-          updateSliderInput(session, inputId = nombre, value = params[[nombre]])
-        }
-      } else {
-        # if (substr(nombre, 1, nchar(nombre) - 1) == "msTeplizumab")
-        # {
-        #  print(paste("Deberia haber asignado TRUE a", nombre))
-        #  flags_actualizando[[nombre]] <- TRUE
-        #  updateNumericInput(session, inputId = paste0("t", nombre), value = params[[nombre]] * 100)
-        #
-        # }
+      if (!soloInflacion) {
+        checkRemanente("BSC", nombre, c("msAVEE"), params, multiplicador = 100)
+        checkRemanente("QMT", nombre, c("msEVPE", "msNIVE"), params, multiplicador = 100)
       }
-      checkRemanente("BSC", nombre, c("msAVEE"), params, multiplicador = 100)
-      checkRemanente("QMT", nombre, c("msEVPE", "msNIVE"), params, multiplicador = 100)
     }
 
     cargoParametros <<- TRUE
   }
+
   # Cambia la perspectiva actualiza parametros
   observeEvent(input$perspectiva, {
     req(input$perspectiva)
     actualizarParametros()
+    pieTabla(textoPieTabla(input$perspectiva, ajustaInflacion()))
   })
+  textoPieTabla <- function(perspectiva, ajusta) {
+    if (!ajusta) return(PIE_DE_TABLA2)
+    switch(as.character(tipoAjuste[[perspectiva]]),
+      "0" = PIE_DE_TABLA2,
+      "1" = gsub("%1", fechaInflacion, PIE_DE_TABLA1),
+      "2" = gsub("%1", fechaInflacion, PIE_DE_TABLA3),
+      "3" = gsub("%1", fechaInflacion, PIE_DE_TABLA4)
+    )
+  }
+
   observeEvent(input$bInflacion, {
     ajustaInflacion(input$bInflacion)
-    inflacionarParametros()
-    if (modificadorInflacion != 1 && ajustaInflacion() == TRUE) {
-      pieTabla(gsub("%1", fechaInflacion, PIE_DE_TABLA1))
-    } else {
-      pieTabla(PIE_DE_TABLA2)
-    }
+    actualizarParametros(soloInflacion = TRUE)
+    pieTabla(textoPieTabla(input$perspectiva, ajustaInflacion()))
   })
-  if (modificadorInflacion != 1) {
-    pieTabla <- reactiveVal(gsub("%1", fechaInflacion, PIE_DE_TABLA1))
-  } else {
-    pieTabla <- reactiveVal(PIE_DE_TABLA2)
-  }
+  pieTabla <- reactiveVal(textoPieTabla(PERSPECTIVA_SELECTA, TRUE))
   output$pieTablaPrincipales <- renderText({
     pieTabla()
   })
@@ -486,8 +460,8 @@ server <- function(input, output, session) {
       scale_fill_manual(values = c(
         "Quimioterapia + Avelumab" = "#f5b85e",
         "Enfortumab Vedotin + Pembrolizumab" = "#014EA3",
-        "Cisplatino + Nivolumab" = "#396ba0",
-        "Quimioterapia" = "#5c7b9c"
+        "Cisplatino + Nivolumab" = "#a0a0a0",
+        "Quimioterapia" = "#3277ac"
       )) +
       labs(
         x = "Intervención",
@@ -893,7 +867,7 @@ server <- function(input, output, session) {
       scale_fill_manual(
         values = c(
           "Avelumab"                         = "#f5b85e",
-          "Cisplatino + Nivolumab"           = "#396ba0",
+          "Cisplatino + Nivolumab"           = "#a0a0a0",
           "Enfortumab Vedotin + Pembrolizumab" = "#014EA3"
         ),
         guide = guide_legend(order = 1)
