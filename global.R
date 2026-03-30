@@ -10,6 +10,9 @@ disclaimer_text <-HTML(  "
   <p>Esta herramienta ha sido desarrollada por el Instituto de Efectividad Clínica y Sanitaria (IECS)</p>
   "
 )
+
+
+
 sectores <<- c("PAMI", "SEGURIDAD SOCIAL", "PRIVADO")
 
 DISCLAIMER_TITLE <- "Avelumab"
@@ -17,6 +20,11 @@ PIE_DE_TABLA1 <- "Costos actualizados a %1 por IPC según INDEC."
 PIE_DE_TABLA2 <- "Costos estimados a mayo de 2025."
 PIE_DE_TABLA3 <- "Costos actualizados a %1 por AlfaBeta."
 PIE_DE_TABLA4 <- "Costos actualizados a %1 por IPC según INDEC y AlfaBeta."
+
+
+PIE_DE_TABLA_ERROR1 <- "Ha ocurrido un error al obtener IPC."
+PIE_DE_TABLA_ERROR2 <- "Ha ocurrido un error al actualizar por AlfaBeta."
+PIE_DE_TABLA_ERROR3 <- "Ha ocurrido un error al actualizar por IPC y AlfaBeta."
 
 cargarEtiquetasTooltips <- function(){
     etiquetas_tooltipsdf <- readxl::read_excel("tooltips.xlsx")
@@ -42,49 +50,109 @@ cargar <- function() {
   parametros_inflacion <- list()
   parametros_tipo <- list()
   parametros_decimales <- list()
+  parametros_infWeb <- list()
+  parametros_webExtraInfo <- list()
 
   for (i in sectores) {
     datafiltrada <- data[toupper(data$Sector) %in% c(i, "GLOBAL"), ]
+
     PARAMETROS <- as.list(datafiltrada$Valor)
     TIPO <- as.list(datafiltrada$Tipo)
     INFLACION <- as.list(datafiltrada$Inflacion)
     DECIMALES <- as.list(datafiltrada$Decimales)
+    INFLACION_WEB <- as.list(datafiltrada$InflacionWeb)
+    WEB_EXTRAINFO <- as.list(datafiltrada$WebExtraInfo)
+
+
     names(PARAMETROS) <- datafiltrada$Parametro
     names(TIPO) <- datafiltrada$Parametro
     names(INFLACION) <- datafiltrada$Parametro
     names(DECIMALES) <- datafiltrada$Parametro
-    
+    names(INFLACION_WEB) <- datafiltrada$Parametro
+    names(WEB_EXTRAINFO) <- datafiltrada$Parametro
+
     parametros_inflacion[[i]] <- INFLACION
     parametros_tipo[[i]] <- TIPO
     parametros_decimales[[i]] <- DECIMALES
     parametros_sectores[[i]] <- PARAMETROS
+    parametros_infWeb[[i]] <- INFLACION_WEB
+    parametros_webExtraInfo[[i]] <- WEB_EXTRAINFO
   }
-  return(list(parametros = parametros_sectores, inflacion = parametros_inflacion, tipo = parametros_tipo, decimales = parametros_decimales))
+  return(list(parametros = parametros_sectores, inflacion = parametros_inflacion,
+   tipo = parametros_tipo, decimales = parametros_decimales,
+   infWeb = parametros_infWeb, WebExtraInfo = parametros_webExtraInfo))
 }
 cargarDatos <- function() {
   
   res <- cargar()
-  clas <- read_excel("lparametros.xlsx", sheet = "parametros")
 
   vParametros_opciones <<- res$tipo
   vParametros_decimales <<- res$decimales
   vParametros_inflacion <<- res$inflacion
+  vParametros_infWeb <<- res$infWeb
+  vParametros_wExtraInfo <<- res$WebExtraInfo
   vParametros <<- res$parametros
 
   print("Datos Cargados")
   
 }
-updateWeb <- function(nombreParametro) {
-  # mockup - a implementar
-  return(list(valor = NULL, actualizo = FALSE))
-}
+obtenerPagina <- function(url) {
+  response <- httr::GET(url)
+  if (httr::http_status(response)$category == "Success") {
+    webdata <- read_html(url)
+    tmp <- webdata %>% html_table(fill = TRUE)
 
-ajustarDatos <- function(parametros, inflacionModificador, parametroInflacion) {
+  } else {
+    tmp <- NULL
+  }
+  return(tmp)
+}
+updateWebAlfaBeta <- function(originalValue, inflacionWeb, filaOffset) {
+  # Recibe el valor original del parametro, la web de alfabeta y la fila de la droga
+  # Intenta obtener el precio, si la web o el offset está mal y da error devuelve NULL
+  # si no devuelve un valor, si ese valor es el mismo que el original considera que no actualizo
+  # Si devolvio un valor y no era igual al original considera que actualizo, si hubo error devuelve que hubo error.
+  update <- FALSE
+  if (!is.null(inflacionWeb) && filaOffset >= 1) {
+    res <- tryCatch({
+      webdata <- obtenerPagina(inflacionWeb)
+      if (!is.null(webdata)) {
+        fila <- webdata[[6 + filaOffset]]
+        valor <- fila[1, 2]
+        valor <- valor %>% substring(first = 2) %>% gsub('\\.','', .) %>% gsub(",", ".", .) %>% as.double
+      } else {
+        valor <- NULL
+      }
+      list(valor, FALSE)
+    }, error = function(e) {
+      list(NULL, TRUE)
+    })
+    valor <- res[[1]]
+    hubo_error <- res[[2]]
+  } else {
+    hubo_error <- TRUE
+  }
+  print(originalValue)
+  if (!is.null(valor) && valor != originalValue) {
+    valor <- convertirPSL(valor)
+    update <- TRUE
+  }
+
+  return(list(valor = valor, actualizo = update, error = hubo_error))
+}
+convertirPSL <- function(precio_lista) {
+
+  precio_lista / 1.7545
+
+}
+ajustarDatos <- function(parametros, inflacionModificador, parametroInflacion, inflacionWeb, inflacionExtraInfo) {
 
   respuesta <- parametros  # inicializás copia
   multiplicador <- ifelse(inflacionModificador != 0, inflacionModificador, 1)
   huboIPC <- inflacionModificador != 0
   huboWeb <- FALSE
+
+  error_web <- FALSE
 
   for (param in names(parametros)) {
     ajusto <- parametroInflacion[[param]]
@@ -92,20 +160,27 @@ ajustarDatos <- function(parametros, inflacionModificador, parametroInflacion) {
       if (ajusto == 1) {
         respuesta[[param]] <- parametros[[param]] * multiplicador
       } else if (ajusto == 2) {
-        resWeb <- updateWeb(param)
+        resWeb <- updateWebAlfaBeta(parametros[[param]], inflacionWeb[[param]], inflacionExtraInfo[[param]])
         if (resWeb$actualizo) {
           respuesta[[param]] <- resWeb$valor
           huboWeb <- TRUE
         } else {
           respuesta[[param]] <- parametros[[param]]
         }
+        if (resWeb$error) {
+          error_web <- TRUE
+        }
       }
     }
   }
 
-  tipoAjuste <- if (huboIPC && huboWeb) 3 else if (huboWeb) 2 else if (huboIPC) 1 else 0
+  error_inflacion <- if (error_web && inflacionModificador == 0) 3
+  else if (error_web) 2 else if(inflacionModificador == 0) 1 else 0
 
-  return(list(respuesta, tipoAjuste))
+  tipo_ajuste <- if (huboIPC && huboWeb) 3 
+  else if (huboWeb) 2 else if (huboIPC) 1 else 0
+
+  return(list(respuesta, tipo_ajuste, error_inflacion))
 
 }
 

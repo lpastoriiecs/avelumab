@@ -1,12 +1,15 @@
 source("login.R")
 source("Avelumab.R")
 PERSPECTIVA_SELECTA <- "PAMI"
+
+
 cargarDatos()
 
 selected_opciones <<- vParametros_opciones[[PERSPECTIVA_SELECTA]]
 # (selected_opciones)
 selected_inflacion <<- vParametros_inflacion[[PERSPECTIVA_SELECTA]]
 selected_decimales <<- vParametros_decimales[[PERSPECTIVA_SELECTA]]
+
 
 cargarEtiquetasTooltips()
 
@@ -36,13 +39,34 @@ server <- function(input, output, session) {
     modificadorInflacion <- 0
     fechaInflacion <- format(Sys.Date(), "%m-%Y")
   }
+  print("Ingresa a esta parte")
   vInfParametros <- list()
   tipoAjuste <- list()
+  errorAjuste <- list()
 
+  textoPieTabla <- function(perspectiva, ajusta) {
+  if (!ajusta) return(PIE_DE_TABLA2)
+  texto <- switch(as.character(tipoAjuste[[perspectiva]]),
+    "0" = PIE_DE_TABLA2,
+    "1" = gsub("%1", fechaInflacion, PIE_DE_TABLA1),
+    "2" = gsub("%1", fechaInflacion, PIE_DE_TABLA3),
+    "3" = gsub("%1", fechaInflacion, PIE_DE_TABLA4)
+  )
+  error <- switch(as.character(errorAjuste[[perspectiva]]),
+    "0" = "",
+    "1" = PIE_DE_TABLA_ERROR1,
+    "2" = PIE_DE_TABLA_ERROR2,
+    "3" = PIE_DE_TABLA_ERROR3
+  )
+  paste(texto, error)
+  }
   for (c in sectores) {
-    res <- ajustarDatos(vParametros[[c]], modificadorInflacion, vParametros_inflacion[[c]])
+    res <- ajustarDatos(vParametros[[c]], modificadorInflacion, vParametros_inflacion[[c]], vParametros_infWeb[[c]], vParametros_wExtraInfo[[c]])
     vInfParametros[[c]] <- res[[1]]
     tipoAjuste[[c]] <- res[[2]]
+    errorAjuste[[c]] <- res[[3]]
+
+    print(paste("Evalua Inflación en sector", c, textoPieTabla(c, TRUE)))
   }
   #-----AJUSTE POR INFLACIÓN
 
@@ -286,15 +310,7 @@ server <- function(input, output, session) {
     actualizarParametros()
     pieTabla(textoPieTabla(input$perspectiva, ajustaInflacion()))
   })
-  textoPieTabla <- function(perspectiva, ajusta) {
-    if (!ajusta) return(PIE_DE_TABLA2)
-    switch(as.character(tipoAjuste[[perspectiva]]),
-      "0" = PIE_DE_TABLA2,
-      "1" = gsub("%1", fechaInflacion, PIE_DE_TABLA1),
-      "2" = gsub("%1", fechaInflacion, PIE_DE_TABLA3),
-      "3" = gsub("%1", fechaInflacion, PIE_DE_TABLA4)
-    )
-  }
+
 
   observeEvent(input$bInflacion, {
     ajustaInflacion(input$bInflacion)
