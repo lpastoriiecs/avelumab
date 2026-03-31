@@ -12,4 +12,4 @@ source("ui_code.R")
 source("db.R")
 
 
-shinyApp(server = server, ui = ui, options = list(launch.browser = TRUE))
+shinyApp(server = server, ui = ui)

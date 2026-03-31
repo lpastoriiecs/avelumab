@@ -260,6 +260,10 @@ server <- function(input, output, session) {
 
 
   actualizarParametros <- function(soloInflacion = FALSE) {
+
+    print(paste("Solo Inflacion: ", soloInflacion))
+
+
     if (ajustaInflacion() == TRUE) {
       selected_modif <- vInfParametros[[input$perspectiva]]
     } else {
@@ -273,7 +277,8 @@ server <- function(input, output, session) {
     }
 
     for (name in names(selected_modif)) {
-      if (!soloInflacion || selected_inflacion[[name]] == 1) {
+      if (!soloInflacion || selected_inflacion[[name]] > 0) {
+        print(paste("Asignamos a", name, selected_modif[[name]]))
         params[[name]] <- selected_modif[[name]]
       }
     }
@@ -281,6 +286,7 @@ server <- function(input, output, session) {
     for (nombre in names(params)) {
       if (nombre %in% names(input) && nombre != "perspectiva") {
         if (!soloInflacion || selected_inflacion[[nombre]] > 0) {
+          print(paste("Updateamos a", nombre, params[[nombre]]))
           flags_actualizando[[nombre]] <- TRUE
           if (selected_opciones[[nombre]] <= 3) {
             updateNumericInput(session, inputId = nombre, value = switch(selected_opciones[[nombre]],
@@ -313,7 +319,11 @@ server <- function(input, output, session) {
 
 
   observeEvent(input$bInflacion, {
+
+    print(paste("Modifica inflación: ", input$bInflacion))
     ajustaInflacion(input$bInflacion)
+    print(paste("Ajusta inflación:", ajustaInflacion()))
+
     actualizarParametros(soloInflacion = TRUE)
     pieTabla(textoPieTabla(input$perspectiva, ajustaInflacion()))
   })
