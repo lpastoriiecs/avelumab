@@ -5,9 +5,12 @@ COLOR_PRIMARIO <- "#014EA3"
 COLOR_GRAFICO2 <- "#014EA3"
 COLOR_GRAFICO1 <- "#f5b85e"
 COLOR_SPINNER <- "#66cc33"
-FECHA_COSTOS <- "2025-05"
+FECHA_COSTOS <- "2025-09"
 disclaimer_text <-HTML(  "
-  <p>Esta herramienta ha sido desarrollada por el Instituto de Efectividad Clínica y Sanitaria (IECS)</p>
+  <p>Esta herramienta ha sido desarrollada por el Instituto de Efectividad Clínica y Sanitaria (IECS) con financiamiento de MERCK El modelo de impacto presupuestario que sustenta la herramienta fue adaptado por el equipo de investigación de IECS.</p>
+  <p>IECS es una institución académica independiente y sin fines de lucro, afiliada a la Universidad de Buenos Aires, dedicada a la investigación, educación y cooperación técnica con el objetivo de mejorar la eficiencia, la equidad, la calidad y la sustentabilidad de los sistemas y servicios de salud en América Latina. En particular, el Departamento de Evaluación de Tecnologías Sanitarias (ETS) y Economía de la Salud, responsable del desarrollo de esta herramienta, realiza evaluaciones económicas, revisiones sistemáticas, estudios de carga de enfermedad y estudios de calidad de vida, entre otros productos orientados a la toma de decisiones basadas en evidencia.</p>
+  <p><b>Términos de uso de la herramienta:</b> Los datos precargados en la herramienta para el AIP fueron recolectados, revisados y validados por el equipo de investigación del IECS en septiembre de 2025.</p>
+  <p>Si bien los parámetros de costos se actualizan automáticamente por el índice de precios al consumidor obtenido del INDEC, el IECS no se responsabiliza por los resultados obtenidos con esta actualización y/o resultados obtenidos con parámetros ingresados por el usuario.</p>
   "
 )
 
@@ -17,7 +20,7 @@ sectores <<- c("PAMI", "SEGURIDAD SOCIAL", "PRIVADO")
 
 DISCLAIMER_TITLE <- "Avelumab"
 PIE_DE_TABLA1 <- "Costos actualizados a %1 por IPC según INDEC."
-PIE_DE_TABLA2 <- "Costos estimados a mayo de 2025."
+PIE_DE_TABLA2 <- "Costos estimados a septiembre de 2025."
 PIE_DE_TABLA3 <- "Costos actualizados a %1 por AlfaBeta."
 PIE_DE_TABLA4 <- "Costos actualizados a %1 por IPC según INDEC y AlfaBeta."
 
@@ -107,46 +110,45 @@ obtenerPagina <- function(url) {
   }
   return(tmp)
 }
-updateWebAlfaBeta <- function(originalValue, inflacionWeb, filaOffset) {
+updateFromDB <- function(originalValue,  id, con) {
   # Recibe el valor original del parametro, la web de alfabeta y la fila de la droga
   # Intenta obtener el precio, si la web o el offset está mal y da error devuelve NULL
   # si no devuelve un valor, si ese valor es el mismo que el original considera que no actualizo
   # Si devolvio un valor y no era igual al original considera que actualizo, si hubo error devuelve que hubo error.
   update <- FALSE
-  if (!is.null(inflacionWeb) && filaOffset >= 1) {
+  if (id >= 1) {
     res <- tryCatch({
-      webdata <- obtenerPagina(inflacionWeb)
-      if (!is.null(webdata)) {
-        fila <- webdata[[6 + filaOffset]]
-        valor <- fila[1, 2]
-        valor <- valor %>% substring(first = 2) %>% gsub('\\.','', .) %>% gsub(",", ".", .) %>% as.double
-      } else {
-        valor <- NULL
+      costo <- db_obtener_costo(id, con)
+        if (!is.null(costo)) {
+          valor <- costo 
+          list(valor, FALSE)
+        } else {
+          valor <- NULL
+          list(valor, TRUE)
+        }
+      }, error = function(e) {
+        list(NULL, TRUE)
+      })
+      valor <- res[[1]]
+      hubo_error <- res[[2]]
+      if (!is.null(valor) && valor != originalValue) {
+        update <- TRUE
       }
-      list(valor, FALSE)
-    }, error = function(e) {
-      list(NULL, TRUE)
-    })
-    valor <- res[[1]]
-    hubo_error <- res[[2]]
   } else {
+    valor <- NULL
     hubo_error <- TRUE
   }
-  print(originalValue)
-  if (!is.null(valor) && valor != originalValue) {
-    valor <- convertirPSL(valor)
-    update <- TRUE
-  }
-
-  return(list(valor = valor, actualizo = update, error = hubo_error))
+      
+      return(list(valor = valor, actualizo = update, error = hubo_error))
 }
+
 convertirPSL <- function(precio_lista) {
 
   precio_lista / 1.7545
 
 }
 ajustarDatos <- function(parametros, inflacionModificador, parametroInflacion, inflacionWeb, inflacionExtraInfo) {
-
+  con <- NULL
   respuesta <- parametros  # inicializás copia
   multiplicador <- ifelse(inflacionModificador != 0, inflacionModificador, 1)
   huboIPC <- inflacionModificador != 0
@@ -160,7 +162,11 @@ ajustarDatos <- function(parametros, inflacionModificador, parametroInflacion, i
       if (ajusto == 1) {
         respuesta[[param]] <- parametros[[param]] * multiplicador
       } else if (ajusto == 2) {
-        resWeb <- updateWebAlfaBeta(parametros[[param]], inflacionWeb[[param]], inflacionExtraInfo[[param]])
+        if (is.null(con))
+        {
+          con <- db_Connect()
+        }
+        resWeb <- updateFromDB(parametros[[param]], inflacionExtraInfo[[param]], con)
         if (resWeb$actualizo) {
           respuesta[[param]] <- resWeb$valor
           huboWeb <- TRUE

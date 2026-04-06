@@ -90,7 +90,7 @@
 .pieTabla {
   margin-left: auto;
   margin-right: auto;
-  margin-top: 0px;
+  margin-top: 10px;
 }
 .pieTabla div {
   margin-left: auto;
@@ -98,6 +98,8 @@
   margin-top: 0px;
   font-style: italic;
   text-align: center;
+  font-size: 0.85em;
+  color: #666;
 }
 .tasaCard h4{
   font-weight: bold;

@@ -108,7 +108,7 @@ panelResPrincipales <- tags$div(
         tableOutput("tablaMain")
       )
     ),
-    div(class = "pieTabla", ),
+    div(class = "pieTabla", textOutput("pieTablaPrincipales")),
     div(class = "pieTabla", ),
   ),
  div(
@@ -152,10 +152,12 @@ panelResCostos <- tags$div(
       tableOutput("tablaCostosDiff")
     ),
   ),
+  div(class = "pieTabla", textOutput("pieTablaDetallados")),
 )
 panelResCostosR <- tags$div(
   class = "panelRes",
-  plotOutput("grhCostosR", height = "550px", width = "100%")
+  plotOutput("grhCostosR", height = "550px", width = "100%"),
+  div(class = "pieTabla", textOutput("pieTablaResumidos"))
 )
 
 panelcitoOutput <- function(titulo, valor, color, icono) {
@@ -232,7 +234,8 @@ panelCoC <- div(
         plotOutput("grhCOC", height = "600px", width = "100%")
       )
     )
-  )
+  ),
+  div(class = "pieTabla", textOutput("pieTablaCoC"))
 )
 
 panelVisualizador <- div(
@@ -266,7 +269,7 @@ panelVisualizador <- div(
       fNumInput("cNivolumab"),
       div(
         style = "display:flex; gap:0px;",
-        prettyCheckbox("bInflacion", "Ajustar costos por Inflación", shape = "square", status = "primary", outline = TRUE, icon = icon("check", class = "chkIcon"), value = TRUE),
+        prettyCheckbox("bInflacion", "Ajustar costos por Inflación", shape = "square", status = "primary", outline = TRUE, icon = icon("check", class = "chkIcon"), value = FALSE),
         iButton("inflacion")
       )
     ),

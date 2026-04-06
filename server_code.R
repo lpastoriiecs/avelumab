@@ -269,8 +269,10 @@ server <- function(input, output, session) {
     } else {
       selected_modif <- vParametros[[input$perspectiva]]
     }
-
+    #print(selected_inflacion)
+    #print(input$perspectiva)
     if (!soloInflacion) {
+      print("actualizo selected inflacion")
       selected_opciones <<- vParametros_opciones[[input$perspectiva]]
       selected_inflacion <<- vParametros_inflacion[[input$perspectiva]]
       selected_decimales <<- vParametros_decimales[[input$perspectiva]]
@@ -278,15 +280,16 @@ server <- function(input, output, session) {
 
     for (name in names(selected_modif)) {
       if (!soloInflacion || selected_inflacion[[name]] > 0) {
-        print(paste("Asignamos a", name, selected_modif[[name]]))
+        #print(paste("Asignamos a", name, selected_modif[[name]]))
         params[[name]] <- selected_modif[[name]]
       }
     }
 
     for (nombre in names(params)) {
       if (nombre %in% names(input) && nombre != "perspectiva") {
+        #print(paste("Miramos a", nombre, selected_modif[[nombre]]))
         if (!soloInflacion || selected_inflacion[[nombre]] > 0) {
-          print(paste("Updateamos a", nombre, params[[nombre]]))
+          #print(paste("Updateamos a", nombre, params[[nombre]]))
           flags_actualizando[[nombre]] <- TRUE
           if (selected_opciones[[nombre]] <= 3) {
             updateNumericInput(session, inputId = nombre, value = switch(selected_opciones[[nombre]],
@@ -320,9 +323,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$bInflacion, {
 
-    print(paste("Modifica inflación: ", input$bInflacion))
     ajustaInflacion(input$bInflacion)
-    print(paste("Ajusta inflación:", ajustaInflacion()))
 
     actualizarParametros(soloInflacion = TRUE)
     pieTabla(textoPieTabla(input$perspectiva, ajustaInflacion()))
@@ -335,6 +336,12 @@ server <- function(input, output, session) {
     pieTabla()
   })
   output$pieTablaDetallados <- renderText({
+    pieTabla()
+  })
+  output$pieTablaCoC <- renderText({
+    pieTabla()
+  })
+  output$pieTablaAlternativos <- renderText({
     pieTabla()
   })
 
@@ -961,6 +968,7 @@ server <- function(input, output, session) {
             tableOutput("tablaCostosNIVDiff")
           )
         ),
+        div(class = "pieTabla", textOutput("pieTablaAlternativos")),
       )
     }
   })

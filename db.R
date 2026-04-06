@@ -117,6 +117,15 @@ db_insert_values <- function(con = NULL, tabla, fields, values) {
   if (propio) dbDisconnect(con)
 }
 
+db_obtener_costo <- function(id, con = NULL) {
+  propio <- is.null(con)
+  if (propio) con <- db_Connect()
+  res <- dbGetQuery(con, "SELECT valor FROM costos WHERE id = $1 LIMIT 1", params = list(id))
+  if (propio) dbDisconnect(con)
+  if (nrow(res) == 0) return(NULL)
+  return(res$valor[[1]])
+}
+
 db_evaluar_logueo <- function(con = NULL, usuario, aplicacion_id) {
   propio <- is.null(con)
   if (propio) con <- db_Connect()
