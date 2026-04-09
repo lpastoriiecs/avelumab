@@ -7,9 +7,10 @@ library(shinyFeedback)
 library(markdown)
 source("login.R")
 source("global.R")
+source("db.R")
 source("server_code.R")
 source("ui_code.R")
-source("db.R")
+
 
 
 shinyApp(server = server, ui = ui)

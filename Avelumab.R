@@ -214,7 +214,7 @@ procesarResultados <- function(basal, proyectado, incrementales, parametros, cos
 
   # Indicadores principales de ejemplo para el visualizador.
   indicadores <- list(
-    deltaIndicador1 = formatear_epi(incrementales$Total / parametros$tHT),
+    deltaIndicador1 = formatear_epi(incrementales$Total / parametros$tHT, decimales = 0),
     deltaIndicador2 = formatear_epi(rImpactoEVP), 
     deltaIndicador3 = formatear_epi(rImpactoNIV),
     deltaIndicador4 = formatear_epi(impactoAVEp),

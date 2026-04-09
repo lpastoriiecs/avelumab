@@ -704,8 +704,8 @@ height: 100%;
 .panelFilaValorWrapper {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  flex-shrink: 0;
+  align-items: center;
+  flex: 1;
 }
 .panelFilaValor {
   font-size: 2rem;
@@ -728,7 +728,7 @@ height: 100%;
   color: var(--color-panelcitoTitle);
   line-height: 1.35;
   word-break: break-word;
-  flex: 1;
+  flex: 2;
 }
 .tablaResultados table {
   border-collapse: collapse;

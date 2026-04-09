@@ -13,6 +13,53 @@ selected_decimales <<- vParametros_decimales[[PERSPECTIVA_SELECTA]]
 
 cargarEtiquetasTooltips()
 
+
+#----AJUSTE POR INFLACIÓN
+informacionInflacion <- obtenerInflacion(FECHA_COSTOS)
+
+
+#Si existe data de inflación ajustamos los parámetros por inflación
+if (!is.null(informacionInflacion)) {
+  modificadorInflacion <- informacionInflacion[[1]]
+  fechaInflacion <- informacionInflacion[[2]]
+} else {
+  modificadorInflacion <- 0
+  fechaInflacion <- format(Sys.Date(), "%m-%Y")
+}
+print("Ingresa a esta parte")
+vInfParametros <- list()
+tipoAjuste <- list()
+errorAjuste <- list()
+
+textoPieTabla <- function(perspectiva, ajusta) {
+  if (!ajusta) return(PIE_DE_TABLA2)
+  texto <- switch(as.character(tipoAjuste[[perspectiva]]),
+                  "0" = PIE_DE_TABLA2,
+                  "1" = gsub("%1", fechaInflacion, PIE_DE_TABLA1),
+                  "2" = gsub("%1", fechaInflacion, PIE_DE_TABLA3),
+                  "3" = gsub("%1", fechaInflacion, PIE_DE_TABLA4)
+  )
+  error <- switch(as.character(errorAjuste[[perspectiva]]),
+                  "0" = "",
+                  "1" = PIE_DE_TABLA_ERROR1,
+                  "2" = PIE_DE_TABLA_ERROR2,
+                  "3" = PIE_DE_TABLA_ERROR3
+  )
+  paste(texto, error)
+}
+
+#-----AJUSTE POR INFLACIÓN
+
+for (c in sectores) {
+  res <- ajustarDatos(vParametros[[c]], modificadorInflacion, vParametros_inflacion[[c]], vParametros_infWeb[[c]], vParametros_wExtraInfo[[c]])
+  vInfParametros[[c]] <- res[[1]]
+  tipoAjuste[[c]] <- res[[2]]
+  errorAjuste[[c]] <- res[[3]]
+  
+  print(paste("Evalua Inflación en sector", c, textoPieTabla(c, TRUE)))
+}
+
+
 server <- function(input, output, session) {
   ############################################################ CODIGO DE LOGIN ##############################################################################
   # funcion reactiva
@@ -27,48 +74,7 @@ server <- function(input, output, session) {
   session$sendCustomMessage("inicializar-tooltips", tooltip_list)
   # Funciones encapsuladas que manejan UI general
 
-  #----AJUSTE POR INFLACIÓN
-  informacionInflacion <- obtenerInflacion(FECHA_COSTOS)
 
-
-  #Si existe data de inflación ajustamos los parámetros por inflación
-  if (!is.null(informacionInflacion)) {
-    modificadorInflacion <- informacionInflacion[[1]]
-    fechaInflacion <- informacionInflacion[[2]]
-  } else {
-    modificadorInflacion <- 0
-    fechaInflacion <- format(Sys.Date(), "%m-%Y")
-  }
-  print("Ingresa a esta parte")
-  vInfParametros <- list()
-  tipoAjuste <- list()
-  errorAjuste <- list()
-
-  textoPieTabla <- function(perspectiva, ajusta) {
-  if (!ajusta) return(PIE_DE_TABLA2)
-  texto <- switch(as.character(tipoAjuste[[perspectiva]]),
-    "0" = PIE_DE_TABLA2,
-    "1" = gsub("%1", fechaInflacion, PIE_DE_TABLA1),
-    "2" = gsub("%1", fechaInflacion, PIE_DE_TABLA3),
-    "3" = gsub("%1", fechaInflacion, PIE_DE_TABLA4)
-  )
-  error <- switch(as.character(errorAjuste[[perspectiva]]),
-    "0" = "",
-    "1" = PIE_DE_TABLA_ERROR1,
-    "2" = PIE_DE_TABLA_ERROR2,
-    "3" = PIE_DE_TABLA_ERROR3
-  )
-  paste(texto, error)
-  }
-  for (c in sectores) {
-    res <- ajustarDatos(vParametros[[c]], modificadorInflacion, vParametros_inflacion[[c]], vParametros_infWeb[[c]], vParametros_wExtraInfo[[c]])
-    vInfParametros[[c]] <- res[[1]]
-    tipoAjuste[[c]] <- res[[2]]
-    errorAjuste[[c]] <- res[[3]]
-
-    print(paste("Evalua Inflación en sector", c, textoPieTabla(c, TRUE)))
-  }
-  #-----AJUSTE POR INFLACIÓN
 
   
   user_logged <- reactiveVal(TRUE)
@@ -154,8 +160,15 @@ server <- function(input, output, session) {
       # Aquí puedes hacer algo más, como mostrar contenido exclusivo para usuarios logueados
       # shinyjs::hide("login1-loginPanel")
       waiter_show(
-        html = div(style = "font-size: 50px;", class = "spinner"),
-        color = COLOR_PRIMARIO
+        html = tagList(
+          div(
+            class = "spinner-border text-light",
+            style = "width: 3rem; height: 3rem;",
+            role = "status"
+          ),
+          p("Calculando...", style = "color: white; margin-top: 14px; font-size: 1.1rem; font-weight: 600;")
+        ),
+        color = "rgba(0, 0, 0, 0.5)"
       )
       isolate(resultado_modelo())
     }
@@ -200,13 +213,18 @@ server <- function(input, output, session) {
     req(isolate(active_tab() != "navConfiguracion"))
     req(cargoParametros)
     if (user_logged()) {
-      if (primerCorrida == FALSE) {
-        waiter_show(
-          html = div(style = paste0("color: ", COLOR_PRIMARIO, "; font-size: 50px;", class = "spinner")),
-          color = "rgba(255, 255, 255, 0.2)" # fondo casi transparente
-        )
-        showingWaiter(TRUE)
-      }
+      waiter_show(
+        html = tagList(
+          div(
+            class = "spinner-border text-light",
+            style = "width: 3rem; height: 3rem;",
+            role = "status"
+          ),
+          p("Calculando...", style = "color: white; margin-top: 14px; font-size: 1.1rem; font-weight: 600;")
+        ),
+        color = "rgba(0, 0, 0, 0.5)"
+      )
+      showingWaiter(TRUE)
       res <- correrModelo(isolate(reactiveValuesToList(params)))
       showingWaiter(FALSE)
       return(res)

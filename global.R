@@ -7,7 +7,7 @@ COLOR_GRAFICO1 <- "#f5b85e"
 COLOR_SPINNER <- "#66cc33"
 FECHA_COSTOS <- "2025-09"
 disclaimer_text <-HTML(  "
-  <p>Esta herramienta ha sido desarrollada por el Instituto de Efectividad Clínica y Sanitaria (IECS) con financiamiento de MERCK El modelo de impacto presupuestario que sustenta la herramienta fue adaptado por el equipo de investigación de IECS.</p>
+  <p>Esta herramienta ha sido desarrollada por el Instituto de Efectividad Clínica y Sanitaria (IECS) con financiamiento de MERCK. El modelo de impacto presupuestario que sustenta la herramienta fue adaptado por el equipo de investigación de IECS.</p>
   <p>IECS es una institución académica independiente y sin fines de lucro, afiliada a la Universidad de Buenos Aires, dedicada a la investigación, educación y cooperación técnica con el objetivo de mejorar la eficiencia, la equidad, la calidad y la sustentabilidad de los sistemas y servicios de salud en América Latina. En particular, el Departamento de Evaluación de Tecnologías Sanitarias (ETS) y Economía de la Salud, responsable del desarrollo de esta herramienta, realiza evaluaciones económicas, revisiones sistemáticas, estudios de carga de enfermedad y estudios de calidad de vida, entre otros productos orientados a la toma de decisiones basadas en evidencia.</p>
   <p><b>Términos de uso de la herramienta:</b> Los datos precargados en la herramienta para el AIP fueron recolectados, revisados y validados por el equipo de investigación del IECS en septiembre de 2025.</p>
   <p>Si bien los parámetros de costos se actualizan automáticamente por el índice de precios al consumidor obtenido del INDEC, el IECS no se responsabiliza por los resultados obtenidos con esta actualización y/o resultados obtenidos con parámetros ingresados por el usuario.</p>
